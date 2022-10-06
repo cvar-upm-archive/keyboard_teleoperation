@@ -1,2 +1,3 @@
 # keyboard_teleoperation
-Keyboard teleoperation for Aerostack 2
+
+Teleoperation with keyboard for Aerostack 2
