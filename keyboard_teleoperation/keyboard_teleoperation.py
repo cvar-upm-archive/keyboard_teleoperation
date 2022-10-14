@@ -9,6 +9,9 @@ import rclpy.executors
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data, qos_profile_system_default
 from python_interface.drone_interface import DroneInterface
+from tf_transformations import euler_from_quaternion, quaternion_from_euler, \
+                               quaternion_matrix, quaternion_from_matrix
+from as2_msgs.msg import ControlMode
 
 def main():
     rclpy.init()
@@ -25,6 +28,7 @@ class keyboardTeleoperation(Node):
         self.window = self.make_window()
         self.control_mode = "-SPEED-"
         self.value_list = [1.0, 1.0, 1.0, 0.10, 0.20, 0.20, 0.50]
+        self.localization_opened = False
         
         #self.event, self.values = self.window.read()
     
@@ -41,13 +45,25 @@ class keyboardTeleoperation(Node):
         font_menu = ("Ubuntu Mono", 18, 'bold')
         window.bind('<Return>', '+TEXT FOCUS OUT+')
         #window['-INPUTTEXT1-'].bind('<Button-1>', '+TEXT FOCUS IN+')       
-        event, values = window.read()
-
+        event, values = window.read(timeout = 50)
         if event == sg.WIN_CLOSED:
             return False
 
         """for idx, value in enumerate(values):
             self.value_list[idx] = value[]"""
+
+        if event == "Localization":
+            self.localization_window = sg.Window("Localization", use_default_focus=False, layout=[[sg.Text("Position", font=font_menu)],
+            [sg.Text("x:", font=font), sg.Text("{:0.2f}".format(round(self.uav.get_position()[0], 2)), font = font, key = "-LOCALIZATION_X-"), sg.Text(",", font=font),
+            sg.Text("y:", font=font), sg.Text("{:0.2f}".format(round(self.uav.get_position()[1], 2)), font = font, key = "-LOCALIZATION_Y-"), sg.Text(",", font=font),
+            sg.Text("z:", font=font), sg.Text("{:0.2f}".format(round(self.uav.get_position()[2], 2)), font = font, key = "-LOCALIZATION_Z-")],
+            [sg.Text("Orientation", font=font_menu)],
+            [sg.Text("r:", font=font), sg.Text("{:0.2f}".format(round(self.uav.get_orientation()[0], 2)), font = font, key = "-LOCALIZATION_R-"), sg.Text(",", font=font),
+            sg.Text("p:", font=font), sg.Text("{:0.2f}".format(round(self.uav.get_orientation()[1], 2)), font = font, key = "-LOCALIZATION_P-"), sg.Text(",", font=font),
+            sg.Text("y:", font=font), sg.Text("{:0.2f}".format(round(self.uav.get_orientation()[2], 2)), font = font, key = "-LOCALIZATION_YW-")]])
+
+            self.localization_opened = True
+
 
         if event == "Settings":
             settings_window = sg.Window("Settings", use_default_focus=False, layout=[[sg.Text("Speed Control Values", font=font_menu)],
@@ -63,13 +79,14 @@ class keyboardTeleoperation(Node):
             [sg.Text("Roll angle value:", font=font), sg.InputText(str(self.value_list[5]), font= font, key="-INPUTTEXT105-", size=(5,3), background_color="white"), sg.Text("rad", font = font)],
             [sg.Text("Attitude duration:", font=font), sg.InputText(str(self.value_list[6]), font= font, key="-INPUTTEXT106-", size=(5,3), background_color="white"), sg.Text("s", font = font)],
             [sg.Text("", font = font)],
-            [sg.Button("Save", font=font), sg.Button("Exit ", font=font, pad=((150,0),(0,0)))]])
+            [sg.Button("Save", font=font), sg.Button("Exit", font=font, pad=((150,0),(0,0)))]])
             while(True):
                 e, v = settings_window.read()
 
-                if e == sg.WIN_CLOSED:
+                if e == sg.WIN_CLOSED or e == "Exit":
+                    settings_window.close()
                     break
-                print (list(v.values()))
+                
                 for idx, value in enumerate(list(v.values())):
                     try:
                         self.value_list[idx] = float(value)
@@ -78,20 +95,19 @@ class keyboardTeleoperation(Node):
                         self.value_list[idx] = 0.0
                         settings_window["-INPUTTEXT10" + str(idx) + "-"].update(value="{:0.2f}".format(0.00))
                         
-
                 if e == "Save":
                     jdx = 0
                     for idx, value in enumerate(self.value_list):
                         window["-INPUTTEXT" + str(jdx+1) + "-"].update(value="{:0.2f}".format(value))
                         window["-INPUTTEXT" + str(jdx+2) + "-"].update(value="{:0.2f}".format(value))
                         if ((idx != 2) and (idx != 3) and (idx != 4) and (idx != 5)):
-                            print(idx)
+                            
                             window["-INPUTTEXT" + str(jdx+3) + "-"].update(value="{:0.2f}".format(value))
                             window["-INPUTTEXT" + str(jdx+4) + "-"].update(value="{:0.2f}".format(value))
                             jdx = jdx + 4
                         else:
                             jdx = jdx + 2
-                        print("-INPUTTEXT" + str(jdx+1) + "-")
+                        
         
 
         if event == "+TEXT FOCUS OUT+":
@@ -159,80 +175,154 @@ class keyboardTeleoperation(Node):
                 except Exception as e:
                     print('Error starting work thread.')
 
-            elif (input[0]=="Up"):
-                window["-key_pressed-"].update(value="↑")
-                lineal = [self.value_list[0], 0.0, 0.0]
-                print(lineal)
-                angular = [0.0, 0.0, 0.0]
-                try:
-                    threading.Thread(target=self.move_at_speed, args=(lineal, angular,), daemon=True).start()
-                except Exception as e:
-                    print('Error starting work thread.')
-
-            elif (input[0]=="Down"):
-                window["-key_pressed-"].update(value="↓")
-                lineal = [-self.value_list[1], 0.0, 0.0]
-                angular = [0.0, 0.0, 0.0]
-                try:
-                    threading.Thread(target=self.move_at_speed, args=(lineal, angular,), daemon=True).start()
-                except Exception as e:
-                    print('Error starting work thread.')  
-
-            elif (input[0]=="Left"):
-                window["-key_pressed-"].update(value="←")
-                lineal = [0.0, self.value_list[2], 0.0]
-                angular = [0.0, 0.0, 0.0]
-                try:
-                    threading.Thread(target=self.move_at_speed, args=(lineal, angular,), daemon=True).start()
-                except Exception as e:
-                    print('Error starting work thread.')  
-
-            elif (input[0]=="Right"):
-                window["-key_pressed-"].update(value="→")
-                lineal = [0.0, -self.value_list[3], 0.0]
-                angular = [0.0, 0.0, 0.0]
-                try:
-                    threading.Thread(target=self.move_at_speed, args=(lineal, angular,), daemon=True).start()
-                except Exception as e:
-                    print('Error starting work thread.')
-
-            elif (input[0]=="w"):
+            elif (input[0] == "h"):
                 window["-key_pressed-"].update(value=input[0])
-                lineal = [0.0, -self.value_list[3], 0.0]
-                angular = [0.0, 0.0, 0.0]
                 try:
-                    threading.Thread(target=self.move_at_speed, args=(lineal, angular,), daemon=True).start()
+                    threading.Thread(target=self.hover, daemon=True).start()
+                except Exception as e:
+                    print('Error starting work thread.')                
+
+            if (self.control_mode == "-SPEED-"):
+                if (input[0]=="Up"):
+                    window["-key_pressed-"].update(value="↑")
+                    lineal = [self.value_list[0], 0.0, 0.0]
+                    angular = [0.0, 0.0, 0.0]
+                    try:
+                        threading.Thread(target=self.move_at_speed, args=(lineal, angular,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+                elif (input[0]=="Down"):
+                    window["-key_pressed-"].update(value="↓")
+                    lineal = [-self.value_list[0], 0.0, 0.0]
+                    angular = [0.0, 0.0, 0.0]
+                    try:
+                        threading.Thread(target=self.move_at_speed, args=(lineal, angular,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')  
+
+                elif (input[0]=="Left"):
+                    window["-key_pressed-"].update(value="←")
+                    lineal = [0.0, self.value_list[0], 0.0]
+                    angular = [0.0, 0.0, 0.0]
+                    try:
+                        threading.Thread(target=self.move_at_speed, args=(lineal, angular,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')  
+
+                elif (input[0]=="Right"):
+                    window["-key_pressed-"].update(value="→")
+                    lineal = [0.0, -self.value_list[0], 0.0]
+                    angular = [0.0, 0.0, 0.0]
+                    try:
+                        threading.Thread(target=self.move_at_speed, args=(lineal, angular,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+            elif(self.control_mode == "-POSE-"):
+
+                if (input[0]=="Up"):
+                    window["-key_pressed-"].update(value="↑")
+                    position = [self.uav.get_position()[0] + self.value_list[1], self.uav.get_position()[1], self.uav.get_position()[2]]
+                    orientation = quaternion_from_euler(self.uav.get_orientation()[0], self.uav.get_orientation()[1], self.uav.get_orientation()[2])
+                    try:
+                        threading.Thread(target=self.go_to_pose, args=(position, orientation,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+                elif (input[0]=="Down"):
+                    window["-key_pressed-"].update(value="↓")
+                    position = [self.uav.get_position()[0] - self.value_list[1], self.uav.get_position()[1], self.uav.get_position()[2]]
+                    orientation = quaternion_from_euler(self.uav.get_orientation()[0], self.uav.get_orientation()[1], self.uav.get_orientation()[2])
+                    try:
+                        threading.Thread(target=self.go_to_pose, args=(position, orientation,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')  
+
+                elif (input[0]=="Left"):
+                    window["-key_pressed-"].update(value="←")
+                    position = [self.uav.get_position()[0], self.uav.get_position()[1] + self.value_list[1], self.uav.get_position()[2]]
+                    orientation = quaternion_from_euler(self.uav.get_orientation()[0], self.uav.get_orientation()[1], self.uav.get_orientation()[2])
+                    try:
+                        threading.Thread(target=self.go_to_pose, args=(position, orientation,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+                elif (input[0]=="Right"):
+                    window["-key_pressed-"].update(value="→")
+                    position = [self.uav.get_position()[0], self.uav.get_position()[1] - self.value_list[1], self.uav.get_position()[2]]
+                    orientation = quaternion_from_euler(self.uav.get_orientation()[0], self.uav.get_orientation()[1], self.uav.get_orientation()[2])
+                    try:
+                        threading.Thread(target=self.go_to_pose, args=(position, orientation,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')              
+
+            if (input[0]=="w"):
+                window["-key_pressed-"].update(value=input[0])
+                position = [self.uav.get_position()[0], self.uav.get_position()[1], self.uav.get_position()[2] + self.value_list[2]]
+                orientation = quaternion_from_euler(self.uav.get_orientation()[0], self.uav.get_orientation()[1], self.uav.get_orientation()[2])
+                try:
+                    threading.Thread(target=self.go_to_pose, args=(position, orientation,), daemon=True).start()
                 except Exception as e:
                     print('Error starting work thread.')
 
             elif (input[0]=="s"):
                 window["-key_pressed-"].update(value=input[0])
-                lineal = [0.0, -self.value_list[3], 0.0]
-                angular = [0.0, 0.0, 0.0]
+                position = [self.uav.get_position()[0], self.uav.get_position()[1], self.uav.get_position()[2] - self.value_list[2]]
+                orientation = quaternion_from_euler(self.uav.get_orientation()[0], self.uav.get_orientation()[1], self.uav.get_orientation()[2])
                 try:
-                    threading.Thread(target=self.move_at_speed, args=(lineal, angular,), daemon=True).start()
+                    threading.Thread(target=self.go_to_pose, args=(position, orientation,), daemon=True).start()
                 except Exception as e:
                     print('Error starting work thread.')
 
             elif (input[0]=="a"):
                 window["-key_pressed-"].update(value=input[0])
-                lineal = [0.0, -self.value_list[3], 0.0]
-                angular = [0.0, 0.0, 0.0]
+                position = [self.uav.get_position()[0], self.uav.get_position()[1], self.uav.get_position()[2]]
+                euler = self.uav.get_orientation()
+                euler[2] = euler[2] + self.value_list[3]
+                #orientation = [self.uav.get_orientation().x, self.uav.get_orientation().y, self.uav.get_orientation().z, self.uav.get_orientation().w]
+                
+                orientation = quaternion_from_euler(euler[0], euler[1], euler[2])
                 try:
-                    threading.Thread(target=self.move_at_speed, args=(lineal, angular,), daemon=True).start()
+                    threading.Thread(target=self.go_to_pose, args=(position, orientation,), daemon=True).start()
                 except Exception as e:
                     print('Error starting work thread.')
                 
             elif (input[0]=="d"):
                 window["-key_pressed-"].update(value=input[0])
-                lineal = [0.0, -self.value_list[3], 0.0]
-                angular = [0.0, 0.0, 0.0]
+                position = [self.uav.get_position()[0], self.uav.get_position()[1], self.uav.get_position()[2]]
+                euler = self.uav.get_orientation()
+                euler[2] = euler[2] - self.value_list[3]
+                #orientation = [self.uav.get_orientation().x, self.uav.get_orientation().y, self.uav.get_orientation().z, self.uav.get_orientation().w]
+                
+                orientation = quaternion_from_euler(euler[0], euler[1], euler[2])
                 try:
-                    threading.Thread(target=self.move_at_speed, args=(lineal, angular,), daemon=True).start()
+                    threading.Thread(target=self.go_to_pose, args=(position, orientation,), daemon=True).start()
                 except Exception as e:
                     print('Error starting work thread.')
-                               
+
+            if (self.localization_opened):
+                self.execute_localization_window(self.localization_window)
+
         return True
+
+    def execute_localization_window(self, window):
+        e, v = window.read(timeout = 1)
+                            
+        window["-LOCALIZATION_X-"].update(value = "{:0.2f}".format(round(self.uav.get_position()[0], 2)))
+        window["-LOCALIZATION_Y-"].update(value = "{:0.2f}".format(round(self.uav.get_position()[1], 2)))
+        window["-LOCALIZATION_Z-"].update(value = "{:0.2f}".format(round(self.uav.get_position()[2], 2)))
+        
+        window["-LOCALIZATION_R-"].update(value = "{:0.2f}".format(round(self.uav.get_orientation()[0], 2)))
+        window["-LOCALIZATION_P-"].update(value = "{:0.2f}".format(round(self.uav.get_orientation()[1], 2)))
+        window["-LOCALIZATION_YW-"].update(value = "{:0.2f}".format(round(self.uav.get_orientation()[2], 2)))
+
+        #localization_window.refresh()
+        if e == sg.WIN_CLOSED or e == "Exit":
+            self.localization_opened = False
+            window.close()
+                
+
 
     def make_window(self):
         sg.theme("DarkBlack1")
@@ -303,12 +393,12 @@ class keyboardTeleoperation(Node):
 
         
 
-        self.layout = [[sg.Button("Settings", font=font_menu), sg.Text("Teleoperation mode: Speed mode", justification="left", font = font_menu, key = "-HEADER_SPEED-", visible=True, pad=((300, 0),(0, 0))),
-        sg.Text("Teleoperation mode: Pose mode", justification="left", font = font_menu, key = "-HEADER_POSE-", visible=False, pad=((300, 0),(0, 0))),
-        sg.Text("Teleoperation mode: Attitude mode", justification="left", font = font_menu, key = "-HEADER_ATTITUDE-", visible=False, pad=((300, 0),(0, 0)))],
+        self.layout = [[sg.Button("Settings", font=font_menu), sg.Text("|", font = font_menu), sg.Button("Localization", font=font_menu), sg.Text("|", font = font_menu), sg.Text("Teleoperation mode: Speed mode", justification="left", font = font_menu, key = "-HEADER_SPEED-", visible=True, pad=((78, 0),(0, 0))),
+        sg.Text("Teleoperation mode: Pose mode", justification="left", font = font_menu, key = "-HEADER_POSE-", visible=False, pad=((78, 0),(0, 0))),
+        sg.Text("Teleoperation mode: Attitude mode", justification="left", font = font_menu, key = "-HEADER_ATTITUDE-", visible=False, pad=((78, 0),(0, 0)))],
          [sg.HSeparator(pad=(0, 10))],
          [sg.Text("BASIC MOTIONS", pad=((10, 280),(10, 0)), font = font_menu), sg.Text("SPEED CONTROL", pad=((0,0),(10, 0)), font = font_menu, key="-SP_CONTROL-"), sg.Text("ATTITUDE CONTROL", pad=((0,0),(10, 0)), font = font_menu, visible=False, key="-AT_CONTROL-"), sg.Text("POSE CONTROL", pad=((0,0),(10, 0)), font = font_menu, visible=False, key="-POS_CONTROL-")],
-         [sg.Column(col1_layout, element_justification='left'), sg.Column(col2_layout, element_justification='left', pad=((0,210), (0,0))), 
+         [sg.Column(col1_layout, element_justification='left'), sg.Column(col2_layout, element_justification='left', pad=((0,215), (0,0))), 
          sg.Column(col3_layout, element_justification='left', justification="left"), sg.Column(col4_layout, element_justification='left', justification="left", key="-COL4-"), sg.Column(col5_layout, element_justification='left', visible=False, key="-COL5-"), sg.Column(col7_layout, element_justification='left', visible=False, key="-COL7-")],
          [sg.Text("TELEOPERATION MODE SELECTION", pad=((10, 100),(10, 0)), font = font_menu), sg.Text("POSE CONTROL", pad=((0,0),(10, 0)), font = font_menu, key="-P_CONTROL-")],
          [sg.Column(col_button_layout, element_justification='left', pad=((0,270), (0,0))), sg.Column(col8_layout, element_justification='left', key="-COL8-"), sg.Column(col6_layout, element_justification='left', key="-COL6-")],
@@ -320,9 +410,7 @@ class keyboardTeleoperation(Node):
     def tick_window(self):
         while self.execute_window(self.window):
             pass
-        else:
-            self.shutdown()
-            
+
     def shutdown(self):
         self.t.join()
 
@@ -334,12 +422,24 @@ class keyboardTeleoperation(Node):
     def land(self):
         self.uav.land(0.5)
 
+    def hover(self):
+        desired_control_mode_ = ControlMode()
+        desired_control_mode_.control_mode = ControlMode.HOVER
+        desired_control_mode_.yaw_mode = ControlMode.YAW_SPEED
+        desired_control_mode_.reference_frame = ControlMode.LOCAL_ENU_FRAME
+        
+        success = self.uav.setMode(desired_control_mode_)
+
+        if not success:
+            print("could not set hover control mode")
+            return
+
     def move_at_speed(self, lineal, angular):
         
         self.uav.send_motion_reference_twist(lineal, angular)
 
-    """def go_to_position(self, position, orientation):
-        self.uav.send_motion_reference_position()"""
+    def go_to_pose(self, position, orientation):
+        self.uav.send_motion_reference_pose(position, orientation)
 
 if __name__ == '__main__':
     main()
