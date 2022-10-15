@@ -1,4 +1,5 @@
 #from msilib.schema import Icon
+from curses import window
 from tkinter import font
 import PySimpleGUI as sg
 import rclpy
@@ -18,14 +19,13 @@ def main():
     uav = DroneInterface("drone_0", verbose=True)
     kt = keyboardTeleoperation(uav, "drone_0", False, False)
     while(kt.execute_window(kt.window)):
-        kt.tick_window()
+        pass
 
 class keyboardTeleoperation(Node):
     def __init__(self, drone_interface, drone_id="drone0", verbose=False, thread = False):
         super().__init__(f'{drone_id}_teleoperation')
         self.drone_id = drone_id
         self.uav = drone_interface
-        self.window = self.make_window()
         self.control_mode = "-SPEED-"
         self.value_list = [1.0, 1.0, 1.0, 0.10, 0.20, 0.20, 0.50]
         self.localization_opened = False
@@ -33,17 +33,19 @@ class keyboardTeleoperation(Node):
         #self.event, self.values = self.window.read()
     
         if (thread):     
-            self.t = threading.Thread(target=self.tick_window)
+            self.t = threading.Thread(target=self.tick_window, daemon=True)
             self.t.start()
+        else:
+            self.window = self.make_window()
 
     def execute_window(self, window):
         
         # End program if user closes window or
         # presses the OK button
         #window.bind('<Button-1>', '+TEXT FOCUS OUT+')
+        
         font = ("Terminus Font", 14)
         font_menu = ("Ubuntu Mono", 18, 'bold')
-        window.bind('<Return>', '+TEXT FOCUS OUT+')
         #window['-INPUTTEXT1-'].bind('<Button-1>', '+TEXT FOCUS IN+')       
         event, values = window.read(timeout = 50)
         if event == sg.WIN_CLOSED:
@@ -53,14 +55,15 @@ class keyboardTeleoperation(Node):
             self.value_list[idx] = value[]"""
 
         if event == "Localization":
-            self.localization_window = sg.Window("Localization", use_default_focus=False, layout=[[sg.Text("Position", font=font_menu)],
+            self.localization_window = sg.Window("Localization", use_default_focus=False, size=(330,200), layout=[[sg.Text("Position", font=font_menu)],
             [sg.Text("x:", font=font), sg.Text("{:0.2f}".format(round(self.uav.get_position()[0], 2)), font = font, key = "-LOCALIZATION_X-"), sg.Text(",", font=font),
             sg.Text("y:", font=font), sg.Text("{:0.2f}".format(round(self.uav.get_position()[1], 2)), font = font, key = "-LOCALIZATION_Y-"), sg.Text(",", font=font),
             sg.Text("z:", font=font), sg.Text("{:0.2f}".format(round(self.uav.get_position()[2], 2)), font = font, key = "-LOCALIZATION_Z-")],
             [sg.Text("Orientation", font=font_menu)],
             [sg.Text("r:", font=font), sg.Text("{:0.2f}".format(round(self.uav.get_orientation()[0], 2)), font = font, key = "-LOCALIZATION_R-"), sg.Text(",", font=font),
             sg.Text("p:", font=font), sg.Text("{:0.2f}".format(round(self.uav.get_orientation()[1], 2)), font = font, key = "-LOCALIZATION_P-"), sg.Text(",", font=font),
-            sg.Text("y:", font=font), sg.Text("{:0.2f}".format(round(self.uav.get_orientation()[2], 2)), font = font, key = "-LOCALIZATION_YW-")]])
+            sg.Text("y:", font=font), sg.Text("{:0.2f}".format(round(self.uav.get_orientation()[2], 2)), font = font, key = "-LOCALIZATION_YW-")],
+            [sg.Button("Exit", font = font, pad=((240,0),(20,0)))]])
 
             self.localization_opened = True
 
@@ -408,7 +411,8 @@ class keyboardTeleoperation(Node):
         return sg.Window("Keyboard Teleoperation", self.layout, return_keyboard_events=True, use_default_focus=False, resizable=True, finalize=True)
 
     def tick_window(self):
-        while self.execute_window(self.window):
+        window = self.make_window()
+        while self.execute_window(window):
             pass
 
     def shutdown(self):
