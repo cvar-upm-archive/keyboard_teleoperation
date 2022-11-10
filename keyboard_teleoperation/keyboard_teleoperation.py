@@ -390,6 +390,13 @@ class keyboardTeleoperation:
                     except Exception as e:
                         print('Error starting work thread.')
 
+            if input[0] == "Delete":
+                window["-key_pressed-"].update(value=input[0])
+                try:
+                    threading.Thread(target=self.emergency_stop, daemon=True).start()
+                except Exception as e:
+                    print('Error starting work thread.')
+
             if (self.localization_opened):
                 self.execute_localization_window(self.localization_window)
 
@@ -555,6 +562,9 @@ class keyboardTeleoperation:
     def go_to_pose(self, position, orientation):
         self.uav.position_motion_handler.send_position_command_with_yaw_angle(
             position, None, self.pose_frame_id, self.twist_frame_id, orientation)
+
+    def emergency_stop(self):
+        self.uav.emergency_stop()
 
 
 if __name__ == '__main__':
