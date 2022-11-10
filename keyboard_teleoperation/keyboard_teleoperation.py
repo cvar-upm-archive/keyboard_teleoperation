@@ -205,7 +205,7 @@ class keyboardTeleoperation:
                 except Exception as e:
                     print('Error starting work thread.')
 
-            elif (input[0] == "y"):
+            elif (input[0] == "l"):
                 window["-key_pressed-"].update(value=input[0])
                 try:
                     threading.Thread(target=self.land, daemon=True).start()
@@ -400,6 +400,8 @@ class keyboardTeleoperation:
             if (self.localization_opened):
                 self.execute_localization_window(self.localization_window)
 
+            print (input[0])
+
         return True
 
     def execute_localization_window(self, window):
@@ -430,7 +432,7 @@ class keyboardTeleoperation:
         font_menu = ("Ubuntu Mono", 18, 'bold')
         col1_layout = [
             [sg.Text("t", font=font)],
-            [sg.Text("y", font=font)],
+            [sg.Text("l", font=font)],
             [sg.Text("h", font=font)],
             [sg.Text("del", font=font)],
             [sg.Text("r", font=font)]]
