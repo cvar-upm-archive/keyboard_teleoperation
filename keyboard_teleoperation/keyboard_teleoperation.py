@@ -92,17 +92,17 @@ class keyboardTeleoperation:
                     self.value_list[3]), font=font, key="-VALUE3-", size=(5, 3), background_color="white"), sg.Text("m", font=font)],
                 [sg.Text("Altitude value:", font=font), sg.InputText(str(
                     self.value_list[4]), font=font, key="-VALUE4-", size=(5, 3), background_color="white"), sg.Text("m", font=font)],
-                [sg.Text("Turn angle value:", font=font), sg.InputText(str(self.value_list[3]), font=font,
+                [sg.Text("Turn angle value:", font=font), sg.InputText(str(self.value_list[5]), font=font,
                                                                     key="-VALUE5-", size=(5, 3), background_color="white"), sg.Text("rad", font=font)],
                 [sg.Text(
                     "", font=font)],
                 [sg.Text(
                     "Attitude control values:", font=font_menu)],
-                [sg.Text("Pitch angle value:", font=font), sg.InputText(str(self.value_list[5]), font=font,
+                [sg.Text("Pitch angle value:", font=font), sg.InputText(str(self.value_list[6]), font=font,
                                                                         key="-VALUE6-", size=(5, 3), background_color="white"), sg.Text("rad", font=font)],
-                [sg.Text("Roll angle value:", font=font), sg.InputText(str(self.value_list[6]), font=font,
+                [sg.Text("Roll angle value:", font=font), sg.InputText(str(self.value_list[7]), font=font,
                                                                     key="-VALUE7-", size=(5, 3), background_color="white"), sg.Text("rad", font=font)],
-                [sg.Text("Attitude duration:", font=font), sg.InputText(str(self.value_list[7]), font=font,
+                [sg.Text("Attitude duration:", font=font), sg.InputText(str(self.value_list[8]), font=font,
                                                                         key="-VALUE8-", size=(5, 3), background_color="white"), sg.Text("s", font=font)],
                 [sg.Text(
                     "", font=font)],
@@ -194,6 +194,8 @@ class keyboardTeleoperation:
             window["-COL5-"].update(visible=True)
             window["-COL4-"].update(visible=False)
             window["-COL7-"].update(visible=False)
+            window["-COL6B-"].update(visible=False)
+            window["-COL6-"].update(visible=True)
         else:
             input = event.split(":")
             if (input[0] == "t"):
@@ -223,7 +225,7 @@ class keyboardTeleoperation:
                     lineal = [self.value_list[0], 0.0, 0.0]
                     try:
                         threading.Thread(target=self.move_at_speed, args=(
-                            lineal, 0.0, 0.0,), daemon=True).start()
+                            lineal, 0.0,), daemon=True).start()
                     except Exception as e:
                         print('Error starting work thread.')
 
