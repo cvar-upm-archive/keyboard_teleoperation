@@ -363,7 +363,7 @@ class keyboardTeleoperation:
                 elif (input[0] == "a"):
                     window["-key_pressed-"].update(value=input[0])
                     position = [self.uav.position[0],
-                                self.uav.position[1], self.uav.position[3]]
+                                self.uav.position[1], self.uav.position[2]]
                     euler = self.uav.orientation
                     yaw = euler[2] + self.value_list[5]
                     #orientation = [self.uav.orientation.x, self.uav.orientation.y, self.uav.orientation.z, self.uav.orientation.w]
@@ -378,7 +378,7 @@ class keyboardTeleoperation:
                 elif (input[0] == "d"):
                     window["-key_pressed-"].update(value=input[0])
                     position = [self.uav.position[0],
-                                self.uav.position[1], self.uav.position[3]]
+                                self.uav.position[1], self.uav.position[2]]
                     euler = self.uav.orientation
                     yaw = euler[2] - self.value_list[5]
                     #orientation = [self.uav.orientation.x, self.uav.orientation.y, self.uav.orientation.z, self.uav.orientation.w]
