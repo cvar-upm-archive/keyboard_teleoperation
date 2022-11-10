@@ -10,25 +10,29 @@ import rclpy.executors
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data, qos_profile_system_default
 from python_interface.drone_interface import DroneInterface
-from tf_transformations import euler_from_quaternion, quaternion_from_euler, \
-                               quaternion_matrix, quaternion_from_matrix
+import motion_reference_handlers.utils as mh_utils
 from as2_msgs.msg import ControlMode
+
+DRONE_ID = "drone_0"
 
 def main():
     rclpy.init()
-    uav = DroneInterface("drone_0", verbose=True)
-    kt = keyboardTeleoperation(uav, "drone_0", False, False)
+    uav = DroneInterface(DRONE_ID, verbose=True, use_sim_time=True)
+    kt = keyboardTeleoperation(uav, DRONE_ID, False, False)
     while(kt.execute_window(kt.window)):
         pass
 
 class keyboardTeleoperation(Node):
-    def __init__(self, drone_interface, drone_id="drone_0", verbose=False, thread = False):
+    def __init__(self, drone_interface, drone_id=DRONE_ID, verbose=False, thread = False):
         super().__init__(f'{drone_id}_teleoperation')
         self.drone_id = drone_id
         self.uav = drone_interface
         self.control_mode = "-SPEED-"
         self.value_list = [1.0, 1.0, 1.0, 0.10, 0.20, 0.20, 0.50]
         self.localization_opened = False
+
+        self.pose_frame_id = mh_utils.get_tf_name(self.uav , 'odom')
+        self.twist_frame_id = mh_utils.get_tf_name(self.uav , 'odom')
     
         if (thread):     
             self.t = threading.Thread(target=self.tick_window, daemon=True)
@@ -417,10 +421,10 @@ class keyboardTeleoperation(Node):
 
     def move_at_speed(self, lineal):
         
-        self.uav.speed_motion_handler.send_speed_command_with_yaw_speed(lineal,'odom', 0.0)
+        self.uav.speed_motion_handler.send_speed_command_with_yaw_speed(lineal,self.twist_frame_id, 0.0)
 
     def go_to_pose(self, position, orientation):
-        self.uav.position_motion_handler.send_position_command_with_yaw_angle(position, None, 'odom', 'odom', orientation)
+        self.uav.position_motion_handler.send_position_command_with_yaw_angle(position, None, self.pose_frame_id, self.twist_frame_id, orientation)
 
 if __name__ == '__main__':
     main()
