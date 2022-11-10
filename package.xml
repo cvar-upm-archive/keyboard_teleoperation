@@ -8,13 +8,8 @@
   <license>TODO: License declaration</license>
 
   <depend>rclpy</depend>
-  <depend>std_srvs</depend>
-  <depend>as2_msgs</depend>
-  <depend>nav_msgs</depend>
-  <depend>sensor_msgs</depend>
-  <depend>geometry_msgs</depend>
-  <depend>geographic_msgs</depend>
-  <depend>action_msgs</depend>
+  <depend>python_interface</depend>
+  <depend>motion_reference_handlers</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

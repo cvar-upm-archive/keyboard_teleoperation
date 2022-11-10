@@ -1,50 +1,57 @@
-#from msilib.schema import Icon
-from curses import window
-from tkinter import font
-import PySimpleGUI as sg
-import rclpy
+"""Keyboard Teleoperation"""
+
+import sys
 import threading
-from time import sleep
-import rclpy.signals
-import rclpy.executors
-from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data, qos_profile_system_default
+import rclpy
+
+import PySimpleGUI as sg
 from python_interface.drone_interface import DroneInterface
 import motion_reference_handlers.utils as mh_utils
-from as2_msgs.msg import ControlMode
 
-DRONE_ID = "drone_0"
 
 def main():
+    """entrypoint"""
+
+    drone_id, is_verbose, use_sim_time = sys.argv[1:]
+    is_verbose = is_verbose.lower() == 'true'
+    use_sim_time = use_sim_time.lower() == 'true'
+
     rclpy.init()
-    uav = DroneInterface(DRONE_ID, verbose=True, use_sim_time=True)
-    kt = keyboardTeleoperation(uav, DRONE_ID, False, False)
-    while(kt.execute_window(kt.window)):
+
+    uav = DroneInterface(drone_id, verbose=is_verbose,
+                         use_sim_time=use_sim_time)
+    kt = keyboardTeleoperation(uav, False)
+    while kt.execute_window(kt.window):
         pass
 
-class keyboardTeleoperation(Node):
-    def __init__(self, drone_interface, drone_id=DRONE_ID, verbose=False, thread = False):
-        super().__init__(f'{drone_id}_teleoperation')
-        self.drone_id = drone_id
+    rclpy.shutdown()
+
+
+class keyboardTeleoperation:
+    """Keyborad Teleoperation"""
+
+    def __init__(self, drone_interface: DroneInterface, thread=False):
         self.uav = drone_interface
+        self.drone_id = self.uav.drone_id
+
         self.control_mode = "-SPEED-"
         self.value_list = [1.0, 1.0, 1.0, 0.10, 0.20, 0.20, 0.50]
         self.localization_opened = False
 
-        self.pose_frame_id = mh_utils.get_tf_name(self.uav , 'odom')
-        self.twist_frame_id = mh_utils.get_tf_name(self.uav , 'odom')
-    
-        if (thread):     
+        self.pose_frame_id = mh_utils.get_tf_name(self.uav, 'odom')
+        self.twist_frame_id = mh_utils.get_tf_name(self.uav, 'odom')
+
+        if thread:
             self.t = threading.Thread(target=self.tick_window, daemon=True)
             self.t.start()
         else:
             self.window = self.make_window()
 
     def execute_window(self, window):
-        
+
         font = ("Terminus Font", 14)
-        font_menu = ("Ubuntu Mono", 18, 'bold')      
-        event, values = window.read(timeout = 50)
+        font_menu = ("Ubuntu Mono", 18, 'bold')
+        event, values = window.read(timeout=50)
 
         if event == sg.WIN_CLOSED:
             if (self.localization_opened):
@@ -52,62 +59,80 @@ class keyboardTeleoperation(Node):
             return False
 
         if event == "Localization":
-            self.localization_window = sg.Window("Localization", use_default_focus=False, size=(330,200), layout=[[sg.Text("Position", font=font_menu)],
-            [sg.Text("x:", font=font), sg.Text("{:0.2f}".format(round(self.uav.position[0], 2)), font = font, key = "-LOCALIZATION_X-"), sg.Text(",", font=font),
-            sg.Text("y:", font=font), sg.Text("{:0.2f}".format(round(self.uav.position[1], 2)), font = font, key = "-LOCALIZATION_Y-"), sg.Text(",", font=font),
-            sg.Text("z:", font=font), sg.Text("{:0.2f}".format(round(self.uav.position[2], 2)), font = font, key = "-LOCALIZATION_Z-")],
-            [sg.Text("Orientation", font=font_menu)],
-            [sg.Text("r:", font=font), sg.Text("{:0.2f}".format(round(self.uav.orientation[0], 2)), font = font, key = "-LOCALIZATION_R-"), sg.Text(",", font=font),
-            sg.Text("p:", font=font), sg.Text("{:0.2f}".format(round(self.uav.orientation[1], 2)), font = font, key = "-LOCALIZATION_P-"), sg.Text(",", font=font),
-            sg.Text("y:", font=font), sg.Text("{:0.2f}".format(round(self.uav.orientation[2], 2)), font = font, key = "-LOCALIZATION_YW-")],
-            [sg.Button("Exit", font = font, pad=((240,0),(20,0)))]])
+            self.localization_window = sg.Window("Localization", use_default_focus=False, size=(330, 200), layout=[[sg.Text("Position", font=font_menu)],
+                                                                                                                   [sg.Text("x:", font=font), sg.Text("{:0.2f}".format(round(self.uav.position[0], 2)), font=font, key="-LOCALIZATION_X-"), sg.Text(",", font=font),
+                                                                                                                   sg.Text("y:", font=font), sg.Text("{:0.2f}".format(round(
+                                                                                                                       self.uav.position[1], 2)), font=font, key="-LOCALIZATION_Y-"), sg.Text(",", font=font),
+                                                                                                                    sg.Text("z:", font=font), sg.Text("{:0.2f}".format(round(self.uav.position[2], 2)), font=font, key="-LOCALIZATION_Z-")],
+                                                                                                                   [sg.Text(
+                                                                                                                       "Orientation", font=font_menu)],
+                                                                                                                   [sg.Text("r:", font=font), sg.Text("{:0.2f}".format(round(self.uav.orientation[0], 2)), font=font, key="-LOCALIZATION_R-"), sg.Text(",", font=font),
+                                                                                                                    sg.Text("p:", font=font), sg.Text("{:0.2f}".format(round(
+                                                                                                                        self.uav.orientation[1], 2)), font=font, key="-LOCALIZATION_P-"), sg.Text(",", font=font),
+                                                                                                                    sg.Text("y:", font=font), sg.Text("{:0.2f}".format(round(self.uav.orientation[2], 2)), font=font, key="-LOCALIZATION_YW-")],
+                                                                                                                   [sg.Button("Exit", font=font, pad=((240, 0), (20, 0)))]])
 
             self.localization_opened = True
 
-
         if event == "Settings":
             settings_window = sg.Window("Settings", use_default_focus=False, layout=[[sg.Text("Speed Control Values", font=font_menu)],
-            [sg.Text("Speed value:", font=font), sg.InputText(str(self.value_list[0]), font= font, key="-INPUTTEXT100-", size=(5,3), background_color="white"), sg.Text("m/s", font=font)],
-            [sg.Text("", font = font)],
-            [sg.Text("Position control values:", font=font_menu)],
-            [sg.Text("Position value:", font=font), sg.InputText(str(self.value_list[1]), font= font, key="-INPUTTEXT101-", size=(5,3), background_color="white"), sg.Text("m", font = font)],
-            [sg.Text("Altitude value:", font=font), sg.InputText(str(self.value_list[2]), font= font, key="-INPUTTEXT102-", size=(5,3), background_color="white"), sg.Text("m", font = font)],
-            [sg.Text("Turn angle value:", font=font), sg.InputText(str(self.value_list[3]), font= font, key="-INPUTTEXT103-", size=(5,3), background_color="white"), sg.Text("rad", font = font)],
-            [sg.Text("", font = font)],
-            [sg.Text("Attitude control values:", font=font_menu)],
-            [sg.Text("Pitch angle value:", font=font), sg.InputText(str(self.value_list[4]), font= font, key="-INPUTTEXT104-", size=(5,3), background_color="white"), sg.Text("rad", font = font)],
-            [sg.Text("Roll angle value:", font=font), sg.InputText(str(self.value_list[5]), font= font, key="-INPUTTEXT105-", size=(5,3), background_color="white"), sg.Text("rad", font = font)],
-            [sg.Text("Attitude duration:", font=font), sg.InputText(str(self.value_list[6]), font= font, key="-INPUTTEXT106-", size=(5,3), background_color="white"), sg.Text("s", font = font)],
-            [sg.Text("", font = font)],
-            [sg.Button("Save", font=font), sg.Button("Exit", font=font, pad=((150,0),(0,0)))]])
-            while(True):
+                                                                                     [sg.Text("Speed value:", font=font), sg.InputText(str(
+                                                                                         self.value_list[0]), font=font, key="-INPUTTEXT100-", size=(5, 3), background_color="white"), sg.Text("m/s", font=font)],
+                                                                                     [sg.Text(
+                                                                                         "", font=font)],
+                                                                                     [sg.Text(
+                                                                                         "Position control values:", font=font_menu)],
+                                                                                     [sg.Text("Position value:", font=font), sg.InputText(str(
+                                                                                         self.value_list[1]), font=font, key="-INPUTTEXT101-", size=(5, 3), background_color="white"), sg.Text("m", font=font)],
+                                                                                     [sg.Text("Altitude value:", font=font), sg.InputText(str(
+                                                                                         self.value_list[2]), font=font, key="-INPUTTEXT102-", size=(5, 3), background_color="white"), sg.Text("m", font=font)],
+                                                                                     [sg.Text("Turn angle value:", font=font), sg.InputText(str(self.value_list[3]), font=font,
+                                                                                                                                            key="-INPUTTEXT103-", size=(5, 3), background_color="white"), sg.Text("rad", font=font)],
+                                                                                     [sg.Text(
+                                                                                         "", font=font)],
+                                                                                     [sg.Text(
+                                                                                         "Attitude control values:", font=font_menu)],
+                                                                                     [sg.Text("Pitch angle value:", font=font), sg.InputText(str(self.value_list[4]), font=font,
+                                                                                                                                             key="-INPUTTEXT104-", size=(5, 3), background_color="white"), sg.Text("rad", font=font)],
+                                                                                     [sg.Text("Roll angle value:", font=font), sg.InputText(str(self.value_list[5]), font=font,
+                                                                                                                                            key="-INPUTTEXT105-", size=(5, 3), background_color="white"), sg.Text("rad", font=font)],
+                                                                                     [sg.Text("Attitude duration:", font=font), sg.InputText(str(self.value_list[6]), font=font,
+                                                                                                                                             key="-INPUTTEXT106-", size=(5, 3), background_color="white"), sg.Text("s", font=font)],
+                                                                                     [sg.Text(
+                                                                                         "", font=font)],
+                                                                                     [sg.Button("Save", font=font), sg.Button("Exit", font=font, pad=((150, 0), (0, 0)))]])
+            while (True):
                 e, v = settings_window.read()
 
                 if e == sg.WIN_CLOSED or e == "Exit":
                     settings_window.close()
                     break
-                
+
                 for idx, value in enumerate(list(v.values())):
                     try:
                         self.value_list[idx] = float(value)
                     except ValueError:
-                        print ("Invalid Input, setting to 0.0")
+                        print("Invalid Input, setting to 0.0")
                         self.value_list[idx] = 0.0
-                        settings_window["-INPUTTEXT10" + str(idx) + "-"].update(value="{:0.2f}".format(0.00))
-                        
+                        settings_window["-INPUTTEXT10" +
+                                        str(idx) + "-"].update(value="{:0.2f}".format(0.00))
+
                 if e == "Save":
                     jdx = 0
                     for idx, value in enumerate(self.value_list):
-                        window["-INPUTTEXT" + str(jdx+1) + "-"].update(value="{:0.2f}".format(value))
-                        window["-INPUTTEXT" + str(jdx+2) + "-"].update(value="{:0.2f}".format(value))
+                        window["-INPUTTEXT" +
+                               str(jdx+1) + "-"].update(value="{:0.2f}".format(value))
+                        window["-INPUTTEXT" +
+                               str(jdx+2) + "-"].update(value="{:0.2f}".format(value))
                         if ((idx != 2) and (idx != 3) and (idx != 4) and (idx != 5)):
-                            
-                            window["-INPUTTEXT" + str(jdx+3) + "-"].update(value="{:0.2f}".format(value))
-                            window["-INPUTTEXT" + str(jdx+4) + "-"].update(value="{:0.2f}".format(value))
+
+                            window["-INPUTTEXT" +
+                                   str(jdx+3) + "-"].update(value="{:0.2f}".format(value))
+                            window["-INPUTTEXT" +
+                                   str(jdx+4) + "-"].update(value="{:0.2f}".format(value))
                             jdx = jdx + 4
                         else:
                             jdx = jdx + 2
-                        
 
         if event == "+TEXT FOCUS OUT+":
             if self.control_mode == "-SPEED-":
@@ -130,7 +155,7 @@ class keyboardTeleoperation(Node):
             window["-COL5-"].update(visible=False)
             window["-COL4-"].update(visible=True)
             window["-COL7-"].update(visible=False)
-            
+
         elif event == "-POSE-":
             self.control_mode = event
             window["-POSE-"].set_focus(True)
@@ -160,14 +185,14 @@ class keyboardTeleoperation(Node):
             window["-COL7-"].update(visible=False)
         else:
             input = event.split(":")
-            if (input[0]=="t"):
+            if (input[0] == "t"):
                 window["-key_pressed-"].update(value=input[0])
                 try:
                     threading.Thread(target=self.take_off, daemon=True).start()
                 except Exception as e:
-                    print('Error starting work thread.')                
+                    print('Error starting work thread.')
 
-            elif (input[0]=="y"):
+            elif (input[0] == "y"):
                 window["-key_pressed-"].update(value=input[0])
                 try:
                     threading.Thread(target=self.land, daemon=True).start()
@@ -179,120 +204,140 @@ class keyboardTeleoperation(Node):
                 try:
                     threading.Thread(target=self.hover, daemon=True).start()
                 except Exception as e:
-                    print('Error starting work thread.')                
+                    print('Error starting work thread.')
 
             if (self.control_mode == "-SPEED-"):
-                if (input[0]=="Up"):
+                if (input[0] == "Up"):
                     window["-key_pressed-"].update(value="↑")
                     lineal = [self.value_list[0], 0.0, 0.0]
                     try:
-                        threading.Thread(target=self.move_at_speed, args=(lineal,), daemon=True).start()
+                        threading.Thread(target=self.move_at_speed, args=(
+                            lineal,), daemon=True).start()
                     except Exception as e:
                         print('Error starting work thread.')
 
-                elif (input[0]=="Down"):
+                elif (input[0] == "Down"):
                     window["-key_pressed-"].update(value="↓")
                     lineal = [-self.value_list[0], 0.0, 0.0]
                     try:
-                        threading.Thread(target=self.move_at_speed, args=(lineal,), daemon=True).start()
+                        threading.Thread(target=self.move_at_speed, args=(
+                            lineal,), daemon=True).start()
                     except Exception as e:
-                        print('Error starting work thread.')  
+                        print('Error starting work thread.')
 
-                elif (input[0]=="Left"):
+                elif (input[0] == "Left"):
                     window["-key_pressed-"].update(value="←")
                     lineal = [0.0, self.value_list[0], 0.0]
                     try:
-                        threading.Thread(target=self.move_at_speed, args=(lineal,), daemon=True).start()
+                        threading.Thread(target=self.move_at_speed, args=(
+                            lineal,), daemon=True).start()
                     except Exception as e:
-                        print('Error starting work thread.')  
+                        print('Error starting work thread.')
 
-                elif (input[0]=="Right"):
+                elif (input[0] == "Right"):
                     window["-key_pressed-"].update(value="→")
                     lineal = [0.0, -self.value_list[0], 0.0]
                     try:
-                        threading.Thread(target=self.move_at_speed, args=(lineal,), daemon=True).start()
+                        threading.Thread(target=self.move_at_speed, args=(
+                            lineal,), daemon=True).start()
                     except Exception as e:
                         print('Error starting work thread.')
 
             elif (self.control_mode == "-POSE-"):
 
-                if (input[0]=="Up"):
+                if (input[0] == "Up"):
                     window["-key_pressed-"].update(value="↑")
-                    position = [self.uav.position[0] + self.value_list[1], self.uav.position[1], self.uav.position[2]]
+                    position = [self.uav.position[0] + self.value_list[1],
+                                self.uav.position[1], self.uav.position[2]]
                     #orientation = quaternion_from_euler(self.uav.orientation[0], self.uav.orientation[1], self.uav.orientation[2])
                     try:
-                        threading.Thread(target=self.go_to_pose, args=(position, self.uav.orientation[2],), daemon=True).start()
+                        threading.Thread(target=self.go_to_pose, args=(
+                            position, self.uav.orientation[2],), daemon=True).start()
                     except Exception as e:
                         print('Error starting work thread.')
 
-                elif (input[0]=="Down"):
+                elif (input[0] == "Down"):
                     window["-key_pressed-"].update(value="↓")
-                    position = [self.uav.position[0] - self.value_list[1], self.uav.position[1], self.uav.position[2]]
+                    position = [self.uav.position[0] - self.value_list[1],
+                                self.uav.position[1], self.uav.position[2]]
                     #orientation = quaternion_from_euler(self.uav.orientation[0], self.uav.orientation[1], self.uav.orientation[2])
                     try:
-                        threading.Thread(target=self.go_to_pose, args=(position, self.uav.orientation[2],), daemon=True).start()
-                    except Exception as e:
-                        print('Error starting work thread.')  
-
-                elif (input[0]=="Left"):
-                    window["-key_pressed-"].update(value="←")
-                    position = [self.uav.position[0], self.uav.position[1] + self.value_list[1], self.uav.position[2]]
-                    #orientation = quaternion_from_euler(self.uav.orientation[0], self.uav.orientation[1], self.uav.orientation[2])
-                    try:
-                        threading.Thread(target=self.go_to_pose, args=(position, self.uav.orientation[2],), daemon=True).start()
+                        threading.Thread(target=self.go_to_pose, args=(
+                            position, self.uav.orientation[2],), daemon=True).start()
                     except Exception as e:
                         print('Error starting work thread.')
 
-                elif (input[0]=="Right"):
-                    window["-key_pressed-"].update(value="→")
-                    position = [self.uav.position[0], self.uav.position[1] - self.value_list[1], self.uav.position[2]]
+                elif (input[0] == "Left"):
+                    window["-key_pressed-"].update(value="←")
+                    position = [self.uav.position[0], self.uav.position[1] +
+                                self.value_list[1], self.uav.position[2]]
                     #orientation = quaternion_from_euler(self.uav.orientation[0], self.uav.orientation[1], self.uav.orientation[2])
                     try:
-                        threading.Thread(target=self.go_to_pose, args=(position, self.uav.orientation[2],), daemon=True).start()
+                        threading.Thread(target=self.go_to_pose, args=(
+                            position, self.uav.orientation[2],), daemon=True).start()
                     except Exception as e:
-                        print('Error starting work thread.')              
+                        print('Error starting work thread.')
 
-            if (input[0]=="w"):
+                elif (input[0] == "Right"):
+                    window["-key_pressed-"].update(value="→")
+                    position = [self.uav.position[0], self.uav.position[1] -
+                                self.value_list[1], self.uav.position[2]]
+                    #orientation = quaternion_from_euler(self.uav.orientation[0], self.uav.orientation[1], self.uav.orientation[2])
+                    try:
+                        threading.Thread(target=self.go_to_pose, args=(
+                            position, self.uav.orientation[2],), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+            if (input[0] == "w"):
                 window["-key_pressed-"].update(value=input[0])
-                position = [self.uav.position[0], self.uav.position[1], self.uav.position[2] + self.value_list[2]]
+                position = [self.uav.position[0], self.uav.position[1],
+                            self.uav.position[2] + self.value_list[2]]
                 #orientation = quaternion_from_euler(self.uav.orientation[0], self.uav.orientation[1], self.uav.orientation[2])
                 try:
-                    threading.Thread(target=self.go_to_pose, args=(position, self.uav.orientation[2],), daemon=True).start()
+                    threading.Thread(target=self.go_to_pose, args=(
+                        position, self.uav.orientation[2],), daemon=True).start()
                 except Exception as e:
                     print('Error starting work thread.')
 
-            elif (input[0]=="s"):
+            elif (input[0] == "s"):
                 window["-key_pressed-"].update(value=input[0])
-                position = [self.uav.position[0], self.uav.position[1], self.uav.position[2] - self.value_list[2]]
+                position = [self.uav.position[0], self.uav.position[1],
+                            self.uav.position[2] - self.value_list[2]]
                 #orientation = quaternion_from_euler(self.uav.orientation[0], self.uav.orientation[1], self.uav.orientation[2])
                 try:
-                    threading.Thread(target=self.go_to_pose, args=(position, self.uav.orientation[2],), daemon=True).start()
+                    threading.Thread(target=self.go_to_pose, args=(
+                        position, self.uav.orientation[2],), daemon=True).start()
                 except Exception as e:
                     print('Error starting work thread.')
 
-            elif (input[0]=="a"):
+            elif (input[0] == "a"):
                 window["-key_pressed-"].update(value=input[0])
-                position = [self.uav.position[0], self.uav.position[1], self.uav.position[2]]
+                position = [self.uav.position[0],
+                            self.uav.position[1], self.uav.position[2]]
                 euler = self.uav.orientation
                 euler[2] = euler[2] + self.value_list[3]
                 #orientation = [self.uav.orientation.x, self.uav.orientation.y, self.uav.orientation.z, self.uav.orientation.w]
-                
+
                 #orientation = quaternion_from_euler(euler[0], euler[1], euler[2])
                 try:
-                    threading.Thread(target=self.go_to_pose, args=(position, euler[2],), daemon=True).start()
+                    threading.Thread(target=self.go_to_pose, args=(
+                        position, euler[2],), daemon=True).start()
                 except Exception as e:
                     print('Error starting work thread.')
-                
-            elif (input[0]=="d"):
+
+            elif (input[0] == "d"):
                 window["-key_pressed-"].update(value=input[0])
-                position = [self.uav.position[0], self.uav.position[1], self.uav.position[2]]
+                position = [self.uav.position[0],
+                            self.uav.position[1], self.uav.position[2]]
                 euler = self.uav.orientation
                 euler[2] = euler[2] - self.value_list[3]
                 #orientation = [self.uav.orientation.x, self.uav.orientation.y, self.uav.orientation.z, self.uav.orientation.w]
-                
+
                 #orientation = quaternion_from_euler(euler[0], euler[1], euler[2])
                 try:
-                    threading.Thread(target=self.go_to_pose, args=(position, euler[2],), daemon=True).start()
+                    threading.Thread(target=self.go_to_pose, args=(
+                        position, euler[2],), daemon=True).start()
                 except Exception as e:
                     print('Error starting work thread.')
 
@@ -302,17 +347,23 @@ class keyboardTeleoperation(Node):
         return True
 
     def execute_localization_window(self, window):
-        e, v = window.read(timeout = 1)
-                            
-        window["-LOCALIZATION_X-"].update(value = "{:0.2f}".format(round(self.uav.position[0], 2)))
-        window["-LOCALIZATION_Y-"].update(value = "{:0.2f}".format(round(self.uav.position[1], 2)))
-        window["-LOCALIZATION_Z-"].update(value = "{:0.2f}".format(round(self.uav.position[2], 2)))
-        
-        window["-LOCALIZATION_R-"].update(value = "{:0.2f}".format(round(self.uav.orientation[0], 2)))
-        window["-LOCALIZATION_P-"].update(value = "{:0.2f}".format(round(self.uav.orientation[1], 2)))
-        window["-LOCALIZATION_YW-"].update(value = "{:0.2f}".format(round(self.uav.orientation[2], 2)))
+        e, v = window.read(timeout=1)
 
-        #localization_window.refresh()
+        window["-LOCALIZATION_X-"].update(
+            value="{:0.2f}".format(round(self.uav.position[0], 2)))
+        window["-LOCALIZATION_Y-"].update(
+            value="{:0.2f}".format(round(self.uav.position[1], 2)))
+        window["-LOCALIZATION_Z-"].update(
+            value="{:0.2f}".format(round(self.uav.position[2], 2)))
+
+        window["-LOCALIZATION_R-"].update(
+            value="{:0.2f}".format(round(self.uav.orientation[0], 2)))
+        window["-LOCALIZATION_P-"].update(
+            value="{:0.2f}".format(round(self.uav.orientation[1], 2)))
+        window["-LOCALIZATION_YW-"].update(
+            value="{:0.2f}".format(round(self.uav.orientation[2], 2)))
+
+        # localization_window.refresh()
         if e == sg.WIN_CLOSED or e == "Exit":
             self.localization_opened = False
             window.close()
@@ -321,83 +372,101 @@ class keyboardTeleoperation(Node):
         sg.theme("DarkBlack1")
         font = ("Terminus Font", 14)
         font_menu = ("Ubuntu Mono", 18, 'bold')
-        col1_layout = [ 
-                        [sg.Text("t", font = font)],
-                        [sg.Text("y", font = font)],
-                        [sg.Text("h", font = font)],
-                        [sg.Text("del", font = font)],
-                        [sg.Text("r", font = font)]]
+        col1_layout = [
+            [sg.Text("t", font=font)],
+            [sg.Text("y", font=font)],
+            [sg.Text("h", font=font)],
+            [sg.Text("del", font=font)],
+            [sg.Text("r", font=font)]]
         col2_layout = [
-                        [sg.Text("Take off", font = font)],
-                        [sg.Text("Land", font = font)],
-                        [sg.Text("Hover", font=font)],
-                        [sg.Text("Emergency Stop", font = font)],
-                        [sg.Text("Reset orientation", font = font)]]
+            [sg.Text("Take off", font=font)],
+            [sg.Text("Land", font=font)],
+            [sg.Text("Hover", font=font)],
+            [sg.Text("Emergency Stop", font=font)],
+            [sg.Text("Reset orientation", font=font)]]
 
         col3_layout = [
-                        [sg.Text("↑", font = font)],
-                        [sg.Text("↓", font = font)],
-                        [sg.Text("←", font = font)],
-                        [sg.Text("→", font = font)],
-                        [sg.Text("", font = font)]]
+            [sg.Text("↑", font=font)],
+            [sg.Text("↓", font=font)],
+            [sg.Text("←", font=font)],
+            [sg.Text("→", font=font)],
+            [sg.Text("", font=font)]]
         col4_layout = [
-                        [sg.Text("Increase forward speed", font = font), sg.Text("1.00", font= font, key="-INPUTTEXT1-"), sg.Text("m/s", font=font)],
-                        [sg.Text("Increase backward speed", font = font), sg.Text("1.00", font= font, key="-INPUTTEXT2-"), sg.Text("m/s", font=font)],
-                        [sg.Text("Increase speed to the right", font = font), sg.Text("1.00", font= font, key="-INPUTTEXT3-"), sg.Text("m/s", font=font)],
-                        [sg.Text("Increase speed to the left", font = font), sg.Text("1.00", font= font, key="-INPUTTEXT4-"), sg.Text("m/s", font=font)],
-                        [sg.Text("", font = font)]
-                        ]
+            [sg.Text("Increase forward speed", font=font), sg.Text(
+                "1.00", font=font, key="-INPUTTEXT1-"), sg.Text("m/s", font=font)],
+            [sg.Text("Increase backward speed", font=font), sg.Text(
+                "1.00", font=font, key="-INPUTTEXT2-"), sg.Text("m/s", font=font)],
+            [sg.Text("Increase speed to the right", font=font), sg.Text(
+                "1.00", font=font, key="-INPUTTEXT3-"), sg.Text("m/s", font=font)],
+            [sg.Text("Increase speed to the left", font=font), sg.Text(
+                "1.00", font=font, key="-INPUTTEXT4-"), sg.Text("m/s", font=font)],
+            [sg.Text("", font=font)]
+        ]
 
         col5_layout = [
-                        [sg.Text("Pitch", font = font),sg.Text("0.20", font= font, key="-INPUTTEXT13-"), sg.Text("rad during", font = font),sg.Text("0.50", font= font, key="-INPUTTEXT17-"), sg.Text("s", font = font)],
-                        [sg.Text("Pitch -", font = font),sg.Text("0.20", font= font, key="-INPUTTEXT14-"), sg.Text("rad during", font = font),sg.Text("0.50", font= font, key="-INPUTTEXT18-"), sg.Text("s", font = font)],
-                        [sg.Text("Roll", font = font),sg.Text("0.20", font= font, key="-INPUTTEXT15-"), sg.Text("rad during", font = font),sg.Text("0.50", font= font, key="-INPUTTEXT19-"), sg.Text("s", font = font)],
-                        [sg.Text("Roll -", font = font),sg.Text("0.20", font= font, key="-INPUTTEXT16-"), sg.Text("rad during", font = font),sg.Text("0.50", font= font, key="-INPUTTEXT20-"), sg.Text("s", font = font)],
-                        [sg.Text("", font = font)]                       
-                        ]
+            [sg.Text("Pitch", font=font), sg.Text("0.20", font=font, key="-INPUTTEXT13-"), sg.Text("rad during",
+                                                                                                   font=font), sg.Text("0.50", font=font, key="-INPUTTEXT17-"), sg.Text("s", font=font)],
+            [sg.Text("Pitch -", font=font), sg.Text("0.20", font=font, key="-INPUTTEXT14-"), sg.Text(
+                "rad during", font=font), sg.Text("0.50", font=font, key="-INPUTTEXT18-"), sg.Text("s", font=font)],
+            [sg.Text("Roll", font=font), sg.Text("0.20", font=font, key="-INPUTTEXT15-"), sg.Text("rad during",
+                                                                                                  font=font), sg.Text("0.50", font=font, key="-INPUTTEXT19-"), sg.Text("s", font=font)],
+            [sg.Text("Roll -", font=font), sg.Text("0.20", font=font, key="-INPUTTEXT16-"), sg.Text("rad during",
+                                                                                                    font=font), sg.Text("0.50", font=font, key="-INPUTTEXT20-"), sg.Text("s", font=font)],
+            [sg.Text("", font=font)]
+        ]
 
         col6_layout = [
-                        [sg.Text("Increase altitude", font = font), sg.Text("1.00", font= font, key="-INPUTTEXT9-"),sg.Text("m", font = font)],
-                        [sg.Text("Decrease altitude", font = font), sg.Text("1.00", font= font, key="-INPUTTEXT10-"),sg.Text("m", font = font)],
-                        [sg.Text("Turn counter-clockwise", font = font), sg.Text("0.10", font= font, key="-INPUTTEXT11-"),sg.Text("rad", font = font)],
-                        [sg.Text("Turn clockwise", font = font), sg.Text("0.10", font= font, key="-INPUTTEXT12-"),sg.Text("rad", font = font)]                       
-                        ]
-                        
+            [sg.Text("Increase altitude", font=font), sg.Text(
+                "1.00", font=font, key="-INPUTTEXT9-"), sg.Text("m", font=font)],
+            [sg.Text("Decrease altitude", font=font), sg.Text(
+                "1.00", font=font, key="-INPUTTEXT10-"), sg.Text("m", font=font)],
+            [sg.Text("Turn counter-clockwise", font=font), sg.Text("0.10",
+                                                                   font=font, key="-INPUTTEXT11-"), sg.Text("rad", font=font)],
+            [sg.Text("Turn clockwise", font=font), sg.Text(
+                "0.10", font=font, key="-INPUTTEXT12-"), sg.Text("rad", font=font)]
+        ]
+
         col7_layout = [
-                        [sg.Text("Increase forward position", font = font), sg.Text("1.00", font= font, key="-INPUTTEXT5-"),sg.Text("m", font = font)],
-                        [sg.Text("Increase backward position", font = font), sg.Text("1.00", font= font, key="-INPUTTEXT6-"),sg.Text("m", font = font)],
-                        [sg.Text("Increase position to the right", font = font), sg.Text("1.00", font= font, key="-INPUTTEXT7-"),sg.Text("m", font = font)],
-                        [sg.Text("Increase position to the left", font = font), sg.Text("1.00", font= font, key="-INPUTTEXT8-"),sg.Text("m", font = font)],
-                        [sg.Text("", font = font)]
-                        ]
+            [sg.Text("Increase forward position", font=font), sg.Text(
+                "1.00", font=font, key="-INPUTTEXT5-"), sg.Text("m", font=font)],
+            [sg.Text("Increase backward position", font=font), sg.Text(
+                "1.00", font=font, key="-INPUTTEXT6-"), sg.Text("m", font=font)],
+            [sg.Text("Increase position to the right", font=font), sg.Text(
+                "1.00", font=font, key="-INPUTTEXT7-"), sg.Text("m", font=font)],
+            [sg.Text("Increase position to the left", font=font), sg.Text(
+                "1.00", font=font, key="-INPUTTEXT8-"), sg.Text("m", font=font)],
+            [sg.Text("", font=font)]
+        ]
 
         col8_layout = [
-                        [sg.Text("w", font = font)],
-                        [sg.Text("s", font = font)],
-                        [sg.Text("a", font = font)],
-                        [sg.Text("d", font = font)]
-                        ]
+            [sg.Text("w", font=font)],
+            [sg.Text("s", font=font)],
+            [sg.Text("a", font=font)],
+            [sg.Text("d", font=font)]
+        ]
 
         col_button_layout = [
-                        [sg.Button("Speed mode", font = font, key="-SPEED-", focus=True)],
-                        [sg.Button("Pose mode", font = font, key="-POSE-")],
-                        [sg.Button("Attitude mode", font = font, key="-ATTITUDE-")]
-                        ]
+            [sg.Button("Speed mode", font=font, key="-SPEED-", focus=True)],
+            [sg.Button("Pose mode", font=font, key="-POSE-")],
+            [sg.Button("Attitude mode", font=font, key="-ATTITUDE-")]
+        ]
 
-        
+        self.layout = [[sg.Button("Settings", font=font_menu), sg.Text("|", font=font_menu), sg.Button("Localization", font=font_menu), sg.Text("|", font=font_menu), sg.Text("Teleoperation mode: Speed mode", justification="left", font=font_menu, key="-HEADER_SPEED-", visible=True, pad=((78, 0), (0, 0))),
+                        sg.Text("Teleoperation mode: Pose mode", justification="left",
+                                font=font_menu, key="-HEADER_POSE-", visible=False, pad=((78, 0), (0, 0))),
+                        sg.Text("Teleoperation mode: Attitude mode", justification="left", font=font_menu, key="-HEADER_ATTITUDE-", visible=False, pad=((78, 0), (0, 0)))],
+                       [sg.HSeparator(pad=(0, 10))],
+                       [sg.Text("BASIC MOTIONS", pad=((10, 280), (10, 0)), font=font_menu), sg.Text("SPEED CONTROL", pad=((0, 0), (10, 0)), font=font_menu, key="-SP_CONTROL-"), sg.Text("ATTITUDE CONTROL",
+                                                                                                                                                                                         pad=((0, 0), (10, 0)), font=font_menu, visible=False, key="-AT_CONTROL-"), sg.Text("POSE CONTROL", pad=((0, 0), (10, 0)), font=font_menu, visible=False, key="-POS_CONTROL-")],
+                       [sg.Column(col1_layout, element_justification='left'), sg.Column(col2_layout, element_justification='left', pad=((0, 215), (0, 0))),
+                        sg.Column(col3_layout, element_justification='left', justification="left"), sg.Column(col4_layout, element_justification='left', justification="left", key="-COL4-"), sg.Column(col5_layout, element_justification='left', visible=False, key="-COL5-"), sg.Column(col7_layout, element_justification='left', visible=False, key="-COL7-")],
+                       [sg.Text("TELEOPERATION MODE SELECTION", pad=((10, 100), (10, 0)), font=font_menu), sg.Text(
+                           "POSE CONTROL", pad=((0, 0), (10, 0)), font=font_menu, key="-P_CONTROL-")],
+                       [sg.Column(col_button_layout, element_justification='left', pad=((0, 270), (0, 0))), sg.Column(
+                           col8_layout, element_justification='left', key="-COL8-"), sg.Column(col6_layout, element_justification='left', key="-COL6-")],
+                       [sg.HSeparator(pad=(0, 10))],
+                       [sg.Text("Last key pressed:", font=font_menu), sg.Text("", font=font_menu, key="-key_pressed-")]]
 
-        self.layout = [[sg.Button("Settings", font=font_menu), sg.Text("|", font = font_menu), sg.Button("Localization", font=font_menu), sg.Text("|", font = font_menu), sg.Text("Teleoperation mode: Speed mode", justification="left", font = font_menu, key = "-HEADER_SPEED-", visible=True, pad=((78, 0),(0, 0))),
-        sg.Text("Teleoperation mode: Pose mode", justification="left", font = font_menu, key = "-HEADER_POSE-", visible=False, pad=((78, 0),(0, 0))),
-        sg.Text("Teleoperation mode: Attitude mode", justification="left", font = font_menu, key = "-HEADER_ATTITUDE-", visible=False, pad=((78, 0),(0, 0)))],
-         [sg.HSeparator(pad=(0, 10))],
-         [sg.Text("BASIC MOTIONS", pad=((10, 280),(10, 0)), font = font_menu), sg.Text("SPEED CONTROL", pad=((0,0),(10, 0)), font = font_menu, key="-SP_CONTROL-"), sg.Text("ATTITUDE CONTROL", pad=((0,0),(10, 0)), font = font_menu, visible=False, key="-AT_CONTROL-"), sg.Text("POSE CONTROL", pad=((0,0),(10, 0)), font = font_menu, visible=False, key="-POS_CONTROL-")],
-         [sg.Column(col1_layout, element_justification='left'), sg.Column(col2_layout, element_justification='left', pad=((0,215), (0,0))), 
-         sg.Column(col3_layout, element_justification='left', justification="left"), sg.Column(col4_layout, element_justification='left', justification="left", key="-COL4-"), sg.Column(col5_layout, element_justification='left', visible=False, key="-COL5-"), sg.Column(col7_layout, element_justification='left', visible=False, key="-COL7-")],
-         [sg.Text("TELEOPERATION MODE SELECTION", pad=((10, 100),(10, 0)), font = font_menu), sg.Text("POSE CONTROL", pad=((0,0),(10, 0)), font = font_menu, key="-P_CONTROL-")],
-         [sg.Column(col_button_layout, element_justification='left', pad=((0,270), (0,0))), sg.Column(col8_layout, element_justification='left', key="-COL8-"), sg.Column(col6_layout, element_justification='left', key="-COL6-")],
-         [sg.HSeparator(pad=(0, 10))],
-         [sg.Text("Last key pressed:", font = font_menu), sg.Text("",font = font_menu, key="-key_pressed-")]]
-        
         return sg.Window("Keyboard Teleoperation", self.layout, return_keyboard_events=True, use_default_focus=False, resizable=True, finalize=True)
 
     def tick_window(self):
@@ -420,11 +489,13 @@ class keyboardTeleoperation(Node):
         self.uav.hover_motion_handler.send_hover()
 
     def move_at_speed(self, lineal):
-        
-        self.uav.speed_motion_handler.send_speed_command_with_yaw_speed(lineal,self.twist_frame_id, 0.0)
+        self.uav.speed_motion_handler.send_speed_command_with_yaw_speed(
+            lineal, self.twist_frame_id, 0.0)
 
     def go_to_pose(self, position, orientation):
-        self.uav.position_motion_handler.send_position_command_with_yaw_angle(position, None, self.pose_frame_id, self.twist_frame_id, orientation)
+        self.uav.position_motion_handler.send_position_command_with_yaw_angle(
+            position, None, self.pose_frame_id, self.twist_frame_id, orientation)
+
 
 if __name__ == '__main__':
     main()
