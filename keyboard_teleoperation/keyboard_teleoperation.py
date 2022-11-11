@@ -556,7 +556,7 @@ class keyboardTeleoperation:
         self.uav.land(0.5)
 
     def hover(self):
-        self.uav.hover_motion_handler.send_hover()
+        self.uav.send_hover()
 
     def move_at_speed(self, lineal, yaw_speed):
         self.uav.speed_motion_handler.send_speed_command_with_yaw_speed(
