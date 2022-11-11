@@ -59,54 +59,54 @@ class keyboardTeleoperation:
             return False
 
         if event == "Localization":
-            self.localization_window = sg.Window("Localization", use_default_focus=False, size=(330, 200), 
-                layout=[[sg.Text("Position", font=font_menu)],
-                [sg.Text("x:", font=font), sg.Text("{:0.2f}".format(round(self.uav.position[0], 2)), font=font, key="-LOCALIZATION_X-"), sg.Text(",", font=font),
-                sg.Text("y:", font=font), sg.Text("{:0.2f}".format(round(
-                    self.uav.position[1], 2)), font=font, key="-LOCALIZATION_Y-"), sg.Text(",", font=font),
-                sg.Text("z:", font=font), sg.Text("{:0.2f}".format(round(self.uav.position[2], 2)), font=font, key="-LOCALIZATION_Z-")],
-                [sg.Text(
-                    "Orientation", font=font_menu)],
-                [sg.Text("r:", font=font), sg.Text("{:0.2f}".format(round(self.uav.orientation[0], 2)), font=font, key="-LOCALIZATION_R-"), sg.Text(",", font=font),
-                sg.Text("p:", font=font), sg.Text("{:0.2f}".format(round(
-                    self.uav.orientation[1], 2)), font=font, key="-LOCALIZATION_P-"), sg.Text(",", font=font),
-                sg.Text("y:", font=font), sg.Text("{:0.2f}".format(round(self.uav.orientation[2], 2)), font=font, key="-LOCALIZATION_YW-")],
-                [sg.Button("Exit", font=font, pad=((240, 0), (20, 0)))]])
+            self.localization_window = sg.Window("Localization", use_default_focus=False, size=(330, 200),
+                                                 layout=[[sg.Text("Position", font=font_menu)],
+                                                         [sg.Text("x:", font=font), sg.Text("{:0.2f}".format(round(self.uav.position[0], 2)), font=font, key="-LOCALIZATION_X-"), sg.Text(",", font=font),
+                                                          sg.Text("y:", font=font), sg.Text("{:0.2f}".format(round(
+                                                              self.uav.position[1], 2)), font=font, key="-LOCALIZATION_Y-"), sg.Text(",", font=font),
+                                                          sg.Text("z:", font=font), sg.Text("{:0.2f}".format(round(self.uav.position[2], 2)), font=font, key="-LOCALIZATION_Z-")],
+                                                         [sg.Text(
+                                                             "Orientation", font=font_menu)],
+                                                         [sg.Text("r:", font=font), sg.Text("{:0.2f}".format(round(self.uav.orientation[0], 2)), font=font, key="-LOCALIZATION_R-"), sg.Text(",", font=font),
+                                                          sg.Text("p:", font=font), sg.Text("{:0.2f}".format(round(
+                                                              self.uav.orientation[1], 2)), font=font, key="-LOCALIZATION_P-"), sg.Text(",", font=font),
+                                                          sg.Text("y:", font=font), sg.Text("{:0.2f}".format(round(self.uav.orientation[2], 2)), font=font, key="-LOCALIZATION_YW-")],
+                                                         [sg.Button("Exit", font=font, pad=((240, 0), (20, 0)))]])
 
             self.localization_opened = True
 
         if event == "Settings":
             settings_window = sg.Window("Settings", use_default_focus=False,
-                layout=[[sg.Text("Speed Control Values", font=font_menu)],
-                [sg.Text("Speed value:", font=font), sg.InputText(str(
-                    self.value_list[0]), font=font, key="-VALUE0-", size=(5, 3), background_color="white"), sg.Text("m/s", font=font)],
-                [sg.Text("Vertical value:", font=font), sg.InputText(str(
-                    self.value_list[1]), font=font, key="-VALUE1-", size=(5, 3), background_color="white"), sg.Text("m/s", font=font)],
-                [sg.Text("Turn speed value:", font=font), sg.InputText(str(
-                    self.value_list[2]), font=font, key="-VALUE2-", size=(5, 3), background_color="white"), sg.Text("rad/s", font=font)],
-                [sg.Text(
-                    "", font=font)],
-                [sg.Text(
-                    "Position control values:", font=font_menu)],
-                [sg.Text("Position value:", font=font), sg.InputText(str(
-                    self.value_list[3]), font=font, key="-VALUE3-", size=(5, 3), background_color="white"), sg.Text("m", font=font)],
-                [sg.Text("Altitude value:", font=font), sg.InputText(str(
-                    self.value_list[4]), font=font, key="-VALUE4-", size=(5, 3), background_color="white"), sg.Text("m", font=font)],
-                [sg.Text("Turn angle value:", font=font), sg.InputText(str(self.value_list[5]), font=font,
-                                                                    key="-VALUE5-", size=(5, 3), background_color="white"), sg.Text("rad", font=font)],
-                [sg.Text(
-                    "", font=font)],
-                [sg.Text(
-                    "Attitude control values:", font=font_menu)],
-                [sg.Text("Pitch angle value:", font=font), sg.InputText(str(self.value_list[6]), font=font,
-                                                                        key="-VALUE6-", size=(5, 3), background_color="white"), sg.Text("rad", font=font)],
-                [sg.Text("Roll angle value:", font=font), sg.InputText(str(self.value_list[7]), font=font,
-                                                                    key="-VALUE7-", size=(5, 3), background_color="white"), sg.Text("rad", font=font)],
-                [sg.Text("Attitude duration:", font=font), sg.InputText(str(self.value_list[8]), font=font,
-                                                                        key="-VALUE8-", size=(5, 3), background_color="white"), sg.Text("s", font=font)],
-                [sg.Text(
-                    "", font=font)],
-                [sg.Button("Save", font=font), sg.Button("Exit", font=font, pad=((150, 0), (0, 0)))]])
+                                        layout=[[sg.Text("Speed Control Values", font=font_menu)],
+                                                [sg.Text("Speed value:", font=font), sg.InputText(str(
+                                                    self.value_list[0]), font=font, key="-VALUE0-", size=(5, 3), background_color="white"), sg.Text("m/s", font=font)],
+                                                [sg.Text("Vertical value:", font=font), sg.InputText(str(
+                                                    self.value_list[1]), font=font, key="-VALUE1-", size=(5, 3), background_color="white"), sg.Text("m/s", font=font)],
+                                                [sg.Text("Turn speed value:", font=font), sg.InputText(str(
+                                                    self.value_list[2]), font=font, key="-VALUE2-", size=(5, 3), background_color="white"), sg.Text("rad/s", font=font)],
+                                                [sg.Text(
+                                                    "", font=font)],
+                                                [sg.Text(
+                                                    "Position control values:", font=font_menu)],
+                                                [sg.Text("Position value:", font=font), sg.InputText(str(
+                                                    self.value_list[3]), font=font, key="-VALUE3-", size=(5, 3), background_color="white"), sg.Text("m", font=font)],
+                                                [sg.Text("Altitude value:", font=font), sg.InputText(str(
+                                                    self.value_list[4]), font=font, key="-VALUE4-", size=(5, 3), background_color="white"), sg.Text("m", font=font)],
+                                                [sg.Text("Turn angle value:", font=font), sg.InputText(str(self.value_list[5]), font=font,
+                                                                                                       key="-VALUE5-", size=(5, 3), background_color="white"), sg.Text("rad", font=font)],
+                                                [sg.Text(
+                                                    "", font=font)],
+                                                [sg.Text(
+                                                    "Attitude control values:", font=font_menu)],
+                                                [sg.Text("Pitch angle value:", font=font), sg.InputText(str(self.value_list[6]), font=font,
+                                                                                                        key="-VALUE6-", size=(5, 3), background_color="white"), sg.Text("rad", font=font)],
+                                                [sg.Text("Roll angle value:", font=font), sg.InputText(str(self.value_list[7]), font=font,
+                                                                                                       key="-VALUE7-", size=(5, 3), background_color="white"), sg.Text("rad", font=font)],
+                                                [sg.Text("Attitude duration:", font=font), sg.InputText(str(self.value_list[8]), font=font,
+                                                                                                        key="-VALUE8-", size=(5, 3), background_color="white"), sg.Text("s", font=font)],
+                                                [sg.Text(
+                                                    "", font=font)],
+                                                [sg.Button("Save", font=font), sg.Button("Exit", font=font, pad=((150, 0), (0, 0)))]])
 
             while (True):
                 e, v = settings_window.read()
@@ -212,7 +212,7 @@ class keyboardTeleoperation:
                 except Exception as e:
                     print('Error starting work thread.')
 
-            elif (input[0] == "h"):
+            elif (input[0] == "space"):
                 window["-key_pressed-"].update(value=input[0])
                 try:
                     threading.Thread(target=self.hover, daemon=True).start()
@@ -393,14 +393,15 @@ class keyboardTeleoperation:
             if input[0] == "Delete":
                 window["-key_pressed-"].update(value=input[0])
                 try:
-                    threading.Thread(target=self.emergency_stop, daemon=True).start()
+                    threading.Thread(
+                        target=self.emergency_stop, daemon=True).start()
                 except Exception as e:
                     print('Error starting work thread.')
 
             if (self.localization_opened):
                 self.execute_localization_window(self.localization_window)
 
-            print (input[0])
+            print(input[0])
 
         return True
 
@@ -433,7 +434,7 @@ class keyboardTeleoperation:
         col1_layout = [
             [sg.Text("t", font=font)],
             [sg.Text("l", font=font)],
-            [sg.Text("h", font=font)],
+            [sg.Text("space", font=font)],
             [sg.Text("del", font=font)],
             [sg.Text("r", font=font)]]
         col2_layout = [
