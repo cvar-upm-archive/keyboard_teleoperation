@@ -401,8 +401,6 @@ class keyboardTeleoperation:
             if (self.localization_opened):
                 self.execute_localization_window(self.localization_window)
 
-            print(input[0])
-
         return True
 
     def execute_localization_window(self, window):
@@ -528,7 +526,7 @@ class keyboardTeleoperation:
                        [sg.HSeparator(pad=(0, 10))],
                        [sg.Text("BASIC MOTIONS", pad=((10, 280), (10, 0)), font=font_menu), sg.Text("SPEED CONTROL", pad=((0, 0), (10, 0)), font=font_menu, key="-SP_CONTROL-"), sg.Text("ATTITUDE CONTROL",
                                                                                                                                                                                          pad=((0, 0), (10, 0)), font=font_menu, visible=False, key="-AT_CONTROL-"), sg.Text("POSE CONTROL", pad=((0, 0), (10, 0)), font=font_menu, visible=False, key="-POS_CONTROL-")],
-                       [sg.Column(col1_layout, element_justification='left'), sg.Column(col2_layout, element_justification='left', pad=((0, 215), (0, 0))),
+                       [sg.Column(col1_layout, element_justification='left'), sg.Column(col2_layout, element_justification='left', pad=((0, 190), (0, 0))),
                         sg.Column(col3_layout, element_justification='left', justification="left"), sg.Column(col4_layout, element_justification='left', justification="left", key="-COL4-"), sg.Column(col5_layout, element_justification='left', visible=False, key="-COL5-"), sg.Column(col7_layout, element_justification='left', visible=False, key="-COL7-")],
                        [sg.Text("TELEOPERATION MODE SELECTION", pad=((10, 100), (10, 0)), font=font_menu), sg.Text(
                            "POSE CONTROL", pad=((0, 0), (10, 0)), font=font_menu, key="-P_CONTROL-", visible=False)],
@@ -537,7 +535,7 @@ class keyboardTeleoperation:
                        [sg.HSeparator(pad=(0, 10))],
                        [sg.Text("Last key pressed:", font=font_menu), sg.Text("", font=font_menu, key="-key_pressed-")]]
 
-        return sg.Window("Keyboard Teleoperation", self.layout, return_keyboard_events=True, use_default_focus=False, resizable=True, finalize=True)
+        return sg.Window("Keyboard Teleoperation: " + self.uav.drone_id, self.layout, return_keyboard_events=True, use_default_focus=False, resizable=True, finalize=True)
 
     def tick_window(self):
         window = self.make_window()
