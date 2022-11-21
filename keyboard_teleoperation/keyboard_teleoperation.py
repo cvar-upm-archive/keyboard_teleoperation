@@ -38,8 +38,8 @@ class keyboardTeleoperation:
         self.value_list = [1.0, 1.0, 0.10, 1.0, 1.0, 0.10, 0.20, 0.20, 0.50]
         self.localization_opened = False
 
-        self.pose_frame_id = mh_utils.get_tf_name(self.uav, 'odom')
-        self.twist_frame_id = mh_utils.get_tf_name(self.uav, 'odom')
+        self.pose_frame_id = mh_utils.get_tf_name(self.uav, 'earth')
+        self.twist_frame_id = mh_utils.get_tf_name(self.uav, 'earth')
 
         if thread:
             self.t = threading.Thread(target=self.tick_window, daemon=True)
