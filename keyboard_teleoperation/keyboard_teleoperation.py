@@ -38,8 +38,8 @@ class keyboardTeleoperation:
         self.value_list = [1.0, 1.0, 0.10, 1.0, 1.0, 0.10, 0.20, 0.20, 0.50]
         self.localization_opened = False
 
-        self.pose_frame_id = mh_utils.get_tf_name(self.uav, 'odom')
-        self.twist_frame_id = mh_utils.get_tf_name(self.uav, 'odom')
+        self.pose_frame_id = 'earth'
+        self.twist_frame_id = 'earth'
 
         self.font = ("Terminus Font", 14)
         self.font_menu = ("Ubuntu Mono", 18, 'bold')
@@ -366,6 +366,8 @@ class keyboardTeleoperation:
 
     def make_window(self):
         sg.theme("DarkBlack1")
+        
+        menu_def=['&File', ['&New File', '&Open...','Open &Module','---', '!&Recent Files','C&lose']],['&Save',['&Save File', 'Save &As','Save &Copy'  ]],['&Edit', ['&Cut', '&Copy', '&Paste']]
 
         col1_layout = [
             [sg.Text("t", font=self.font)],
@@ -457,7 +459,8 @@ class keyboardTeleoperation:
             [sg.Button("Attitude mode", font=self.font, key="-ATTITUDE-")]
         ]
 
-        self.layout = [[sg.Button("Settings", font=self.font_menu), sg.Text("|", font=self.font_menu), sg.Button("Localization", font=self.font_menu), sg.Text("|", font=self.font_menu), sg.Text("Teleoperation mode: Speed mode", justification="left", font=self.font_menu, key="-HEADER_SPEED-", visible=True, pad=((78, 0), (0, 0))),
+        self.layout = [
+                        [sg.Button("Settings", font=self.font_menu), sg.Text("|", font=self.font_menu), sg.Button("Localization", font=self.font_menu), sg.Text("|", font=self.font_menu), sg.Text("Teleoperation mode: Speed mode", justification="left", font=self.font_menu, key="-HEADER_SPEED-", visible=True, pad=((78, 0), (0, 0))),
                         sg.Text("Teleoperation mode: Pose mode", justification="left",
                                 font=self.font_menu, key="-HEADER_POSE-", visible=False, pad=((78, 0), (0, 0))),
                         sg.Text("Teleoperation mode: Attitude mode", justification="left", font=self.font_menu, key="-HEADER_ATTITUDE-", visible=False, pad=((78, 0), (0, 0)))],
@@ -576,7 +579,7 @@ class keyboardTeleoperation:
             position, None, self.pose_frame_id, self.twist_frame_id, orientation)
 
     def emergency_stop(self):
-        self.uav.emergency_stop()
+        self.uav.send_emergency_killswitch_to_aircraft()
 
 
 if __name__ == '__main__':
