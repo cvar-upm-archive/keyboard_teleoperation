@@ -518,7 +518,7 @@ class keyboardTeleoperation:
 
         col_selector_settings_layout = [[sg.Frame("Control selector", frame)]]
 
-        return sg.Window("Settings: "+ self.uav.drone_id, layout=[[sg.Column(col_value_settings_layout), sg.Column(col_selector_settings_layout, expand_y=True)]], location=self.window.CurrentLocation(), use_default_focus=False)
+        return sg.Window("Settings: "+ self.uav.drone_id, layout=[[sg.Column(col_value_settings_layout)]], location=self.window.CurrentLocation(), use_default_focus=False)
 
     
     def make_localization_window(self):
