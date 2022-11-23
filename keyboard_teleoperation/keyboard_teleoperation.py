@@ -15,12 +15,14 @@ def main():
     drone_id, is_verbose, use_sim_time = sys.argv[1:]
     is_verbose = is_verbose.lower() == 'true'
     use_sim_time = use_sim_time.lower() == 'true'
-
+    list_uav = list()
     rclpy.init()
+    if ',' in drone_id:
+        list_drone_ids = drone_id.split(",")
+        for id in list_drone_ids:  list_uav.append(DroneInterface(id, verbose=is_verbose, use_sim_time=use_sim_time)) 
+    else:
+        list_uav.append(DroneInterface(drone_id, verbose=is_verbose, use_sim_time=use_sim_time))
 
-    uav = DroneInterface(drone_id, verbose=is_verbose,
-                         use_sim_time=use_sim_time)
-    list_uav = [uav]
     kt = keyboardTeleoperation(list_uav, False)
     while kt.execute_main_window(kt.window):
         pass
@@ -35,7 +37,7 @@ class keyboardTeleoperation:
         self.list_uav = list_drone_interface
         self.list_drone_id = list()
         
-        for uav in self.list_uav: self.list_drone_id.append([[uav.get_namespace(), True]])
+        for uav in self.list_uav: self.list_drone_id.append([uav.get_namespace(), True])
         
         self.control_mode = "-SPEED-"
         self.value_list = [1.0, 1.0, 0.10, 1.0, 1.0, 0.10, 0.20, 0.20, 0.50]
@@ -152,8 +154,9 @@ class keyboardTeleoperation:
                 self.execute_localization_window(self.localization_window)
 
     def manage_settings_event(self, window: sg.Window, settings_window: sg.Window, settings_event, settings_value):
-
-        for idx, value in enumerate(list(settings_value.values())):
+        numeric_values = list(settings_value.values())[0:len(self.value_list)]
+        selection_values = list(settings_value.values())[len(self.value_list):]
+        for idx, value in enumerate(list(numeric_values)):
             try:
                 self.value_list[idx] = float(value)
             except ValueError:
@@ -162,7 +165,23 @@ class keyboardTeleoperation:
                 settings_window["-VALUE" +
                                 str(idx) + "-"].update(value="{:0.2f}".format(0.00))
 
-        if settings_event == "Save":
+        if settings_event == "All":
+            
+            if (list(settings_value.values())[-1]):
+                for index, value in enumerate(selection_values[:-1]):
+                    settings_window[self.list_drone_id[index][0]].update(True)
+            else:
+                for index, value in enumerate(selection_values[:-1]):
+                    settings_window[self.list_drone_id[index][0]].update(False)
+
+        elif settings_event in [x for l in self.list_drone_id for x in l]:
+
+            if all(selection_values[:-1]):
+                settings_window["All"].update(True)
+            else:
+                settings_window["All"].update(False)
+
+        elif settings_event == "Save":
             jdx = 0
             for idx, value in enumerate(self.value_list):
                 window["-INPUTTEXT" +
@@ -182,22 +201,27 @@ class keyboardTeleoperation:
                 settings_window["-VALUE" +
                                 str(idx) + "-"].update(value="{:0.2f}".format(value))
 
+            for index, value in enumerate(selection_values[:-1]):
+                self.list_drone_id[index][1] = value
+
+            
+
     def execute_localization_window(self, localization_window: sg.Window):
         localization_event, _ = localization_window.read(timeout=1)  # type: ignore
 
         localization_window["-LOCALIZATION_X-"].update(
-            value="{:0.2f}".format(round(self.uav.position[0], 2)))
+            value="{:0.2f}".format(round(self.list_uav[0].position[0], 2)))
         localization_window["-LOCALIZATION_Y-"].update(
-            value="{:0.2f}".format(round(self.uav.position[1], 2)))
+            value="{:0.2f}".format(round(self.list_uav[0].position[1], 2))) 
         localization_window["-LOCALIZATION_Z-"].update(
-            value="{:0.2f}".format(round(self.uav.position[2], 2)))
+            value="{:0.2f}".format(round(self.list_uav[0].position[2], 2)))
 
         localization_window["-LOCALIZATION_R-"].update(
-            value="{:0.2f}".format(round(self.uav.orientation[0], 2)))
+            value="{:0.2f}".format(round(self.list_uav[0].orientation[0], 2)))
         localization_window["-LOCALIZATION_P-"].update(
-            value="{:0.2f}".format(round(self.uav.orientation[1], 2)))
+            value="{:0.2f}".format(round(self.list_uav[0].orientation[1], 2)))
         localization_window["-LOCALIZATION_YW-"].update(
-            value="{:0.2f}".format(round(self.uav.orientation[2], 2)))
+            value="{:0.2f}".format(round(self.list_uav[0].orientation[2], 2)))
 
         # localization_window.refresh()
         if localization_event == sg.WIN_CLOSED or localization_event == "Exit":
@@ -350,10 +374,21 @@ class keyboardTeleoperation:
                     "", font=self.font)],
                 [sg.Button("Save", font=self.font), sg.Button("Exit", font=self.font, pad=((150, 0), (0, 0)))]]
 
-        col_selector_settings_layout = [
-                [sg.CB("drone_sim_0", key="drone_sim_0", enable_events=False, background_color="grey")]]
+        col_selector_settings_layout = list()
 
-        return sg.Window("Settings", layout=[[sg.Column(col_value_settings_layout), sg.Column(col_selector_settings_layout, expand_y=True)]], location=self.window.CurrentLocation(), use_default_focus=False)
+        all_selector = True
+
+        for drone_id in self.list_drone_id: 
+            col_selector_settings_layout.append(
+                [sg.CB(drone_id[0], key=drone_id[0], enable_events=True, font=self.font, background_color="grey", default=drone_id[1])])
+            if not drone_id[1]:
+                all_selector = False
+
+        frame = sg.Frame("Drone selection control", layout=[[sg.Column(col_selector_settings_layout, expand_y=True, scrollable=True, vertical_scroll_only=True, background_color="grey")],
+            [sg.CB("All", key="All", enable_events=True, font=self.font, background_color="grey", expand_x=True, default=all_selector)]], vertical_alignment="top", size=(200, 300))
+
+        return sg.Window("Settings", layout=[[sg.Column(col_value_settings_layout), frame]],
+                 location=self.window.CurrentLocation(), use_default_focus=False)
 
     def make_localization_window(self):
 
@@ -379,7 +414,7 @@ class keyboardTeleoperation:
             window["-key_pressed-"].update(value=input[0])
             for index, drone_id in enumerate(self.list_drone_id): 
                 #self.list_uav[index].get_logger().info(str(drone_id[index][1]))
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
                     
                     try:
                         threading.Thread(target=self.take_off, args=(
@@ -390,7 +425,7 @@ class keyboardTeleoperation:
         elif (input[0] == "l"):
             window["-key_pressed-"].update(value=input[0])
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
 
                     try:
                         threading.Thread(target=self.land, args=(
@@ -401,7 +436,7 @@ class keyboardTeleoperation:
         elif (input[0] == "space"):
             window["-key_pressed-"].update(value=input[0])
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
 
                     try:
                         threading.Thread(target=self.hover, args=(
@@ -412,7 +447,7 @@ class keyboardTeleoperation:
         elif input[0] == "Delete":
             window["-key_pressed-"].update(value=input[0])
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
                     try:
                         threading.Thread(target=self.emergency_stop, args=(
                             self.list_uav[index],), daemon=True).start()
@@ -424,7 +459,7 @@ class keyboardTeleoperation:
         if (input[0] == "Up"):
             window["-key_pressed-"].update(value="↑")
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
 
                     lineal = [self.value_list[0], 0.0, 0.0]
                     try:
@@ -436,7 +471,7 @@ class keyboardTeleoperation:
         elif (input[0] == "Down"):
             window["-key_pressed-"].update(value="↓")
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
 
                     lineal = [-self.value_list[0], 0.0, 0.0]
                     try:
@@ -448,7 +483,7 @@ class keyboardTeleoperation:
         elif (input[0] == "Left"):
             window["-key_pressed-"].update(value="←")
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
 
                     lineal = [0.0, self.value_list[0], 0.0]
                     try:
@@ -460,7 +495,7 @@ class keyboardTeleoperation:
         elif (input[0] == "Right"):
             window["-key_pressed-"].update(value="→")
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
 
                     lineal = [0.0, -self.value_list[0], 0.0]
                     try:
@@ -472,7 +507,7 @@ class keyboardTeleoperation:
         elif (input[0] == "w"):
             window["-key_pressed-"].update(value=input[0])
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
 
                     lineal = [0.0, 0.0, self.value_list[1]]
                     try:
@@ -484,7 +519,7 @@ class keyboardTeleoperation:
         elif (input[0] == "s"):
             window["-key_pressed-"].update(value=input[0])
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
 
                     lineal = [0.0, 0.0, -self.value_list[1]]
                     try:
@@ -496,7 +531,7 @@ class keyboardTeleoperation:
         elif (input[0] == "a"):
             window["-key_pressed-"].update(value=input[0])
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
 
                     lineal = [0.0, 0.0, 0.0]
                     try:
@@ -508,7 +543,7 @@ class keyboardTeleoperation:
         elif (input[0] == "d"):
             window["-key_pressed-"].update(value=input[0])
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
 
                     lineal = [0.0, 0.0, 0.0]
                     try:
@@ -522,7 +557,7 @@ class keyboardTeleoperation:
         if (input[0] == "Up"):
             window["-key_pressed-"].update(value="↑")
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
 
                     position = [self.list_uav[index].position[0] + self.value_list[3],
                                 self.list_uav[index].position[1], self.list_uav[index].position[2]]
@@ -536,7 +571,7 @@ class keyboardTeleoperation:
         elif (input[0] == "Down"):
             window["-key_pressed-"].update(value="↓")
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
                     position = [self.list_uav[index].position[0] - self.value_list[3],
                                 self.list_uav[index].position[1], self.list_uav[index].position[2]]
             #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
@@ -549,7 +584,7 @@ class keyboardTeleoperation:
         elif (input[0] == "Left"):
             window["-key_pressed-"].update(value="←")
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
                     position = [self.list_uav[index].position[0], self.list_uav[index].position[1] +
                                 self.value_list[3], self.list_uav[index].position[2]]
                     #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
@@ -562,7 +597,7 @@ class keyboardTeleoperation:
         elif (input[0] == "Right"):
             window["-key_pressed-"].update(value="→")
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
                     position = [self.list_uav[index].position[0], self.list_uav[index].position[1] -
                                 self.value_list[3], self.list_uav[index].position[2]]
                     #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
@@ -575,7 +610,7 @@ class keyboardTeleoperation:
         if (input[0] == "w"):
             window["-key_pressed-"].update(value=input[0])
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
                     position = [self.list_uav[index].position[0], self.list_uav[index].position[1],
                                 self.list_uav[index].position[2] + self.value_list[4]]
                     #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
@@ -588,7 +623,7 @@ class keyboardTeleoperation:
         elif (input[0] == "s"):
             window["-key_pressed-"].update(value=input[0])
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
                     position = [self.list_uav[index].position[0], self.list_uav[index].position[1],
                                 self.list_uav[index].position[2] - self.value_list[4]]
                     #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
@@ -601,7 +636,7 @@ class keyboardTeleoperation:
         elif (input[0] == "a"):
             window["-key_pressed-"].update(value=input[0])
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
                     position = [self.list_uav[index].position[0],
                                 self.list_uav[index].position[1], self.list_uav[index].position[2]]
                     euler = self.list_uav[index].orientation
@@ -617,7 +652,7 @@ class keyboardTeleoperation:
         elif (input[0] == "d"):
             window["-key_pressed-"].update(value=input[0])
             for index, drone_id in enumerate(self.list_drone_id): 
-                if drone_id[index][1] == True:
+                if drone_id[1] == True:
                     position = [self.list_uav[index].position[0],
                                 self.list_uav[index].position[1], self.list_uav[index].position[2]]
                     euler = self.list_uav[index].orientation
