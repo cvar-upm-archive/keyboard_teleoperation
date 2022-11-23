@@ -22,8 +22,7 @@ def main():
                          use_sim_time=use_sim_time)
     list_uav = [uav]
     kt = keyboardTeleoperation(list_uav, False)
-    print("hola")
-    while kt.execute_window(kt.window):
+    while kt.execute_main_window(kt.window):
         pass
 
     rclpy.shutdown()
@@ -49,12 +48,17 @@ class keyboardTeleoperation:
         self.font_menu = ("Ubuntu Mono", 18, 'bold')
 
         if thread:
-            self.t = threading.Thread(target=self.tick_window, daemon=True)
+            self.t = threading.Thread(target=self.tick_main_window, daemon=True)
             self.t.start()
         else:
-            self.window = self.make_window()
+            self.window = self.make_main_window()
 
-    def execute_window(self, window: sg.Window):
+    def tick_main_window(self):
+        self.window = self.make_main_window()
+        while self.execute_main_window(self.window):
+            pass
+
+    def execute_main_window(self, window: sg.Window):
 
         event, values = window.read(timeout=50)  # type: ignore
 
@@ -63,12 +67,11 @@ class keyboardTeleoperation:
                 self.localization_window.close()
             return False
 
-        """if self.control_mode == "-SPEED-":
-            window["-SPEED-"].set_focus(True)
-        elif self.control_mode == "-POSE-":
-            window["-POSE-"].set_focus(True)
-        elif self.control_mode == "-ATTITUDE-":
-            window["-ATTITUDE-"].set_focus(True)"""
+        self.manage_main_window_event(window, event, values)
+
+        return True
+
+    def manage_main_window_event(self, window: sg.Window, event, value):
 
         if event == "Localization":
             if (not self.localization_opened):
@@ -76,46 +79,19 @@ class keyboardTeleoperation:
 
             self.localization_opened = True
 
-        if event == "Settings":
+        elif event == "Settings":
             settings_window = self.make_settings_window()
 
             while (True):
-                e, v = settings_window.read()  # type: ignore
+                settings_event, settings_value = settings_window.read()  # type: ignore
 
-                if e == sg.WIN_CLOSED or e == "Exit":
+                if settings_event == sg.WIN_CLOSED or settings_event == "Exit":
                     settings_window.close()
                     break
 
-                for idx, value in enumerate(list(v.values())):
-                    try:
-                        self.value_list[idx] = float(value)
-                    except ValueError:
-                        print("Invalid Input, setting to 0.0")
-                        self.value_list[idx] = 0.0
-                        settings_window["-VALUE" +
-                                        str(idx) + "-"].update(value="{:0.2f}".format(0.00))
+                self.manage_settings_event(window, settings_window, settings_event, settings_value)   
 
-                if e == "Save":
-                    jdx = 0
-                    for idx, value in enumerate(self.value_list):
-                        window["-INPUTTEXT" +
-                               str(jdx+1) + "-"].update(value="{:0.2f}".format(value))
-                        window["-INPUTTEXT" +
-                               str(jdx+2) + "-"].update(value="{:0.2f}".format(value))
-                        if ((idx != 1) and (idx != 2) and (idx != 4) and (idx != 5) and (idx != 6) and (idx != 7)):
-
-                            window["-INPUTTEXT" +
-                                   str(jdx+3) + "-"].update(value="{:0.2f}".format(value))
-                            window["-INPUTTEXT" +
-                                   str(jdx+4) + "-"].update(value="{:0.2f}".format(value))
-                            jdx = jdx + 4
-                        else:
-                            jdx = jdx + 2
-
-                        settings_window["-VALUE" +
-                                        str(idx) + "-"].update(value="{:0.2f}".format(value))      
-
-        if event == "-SPEED-":
+        elif event == "-SPEED-":
             self.control_mode = event
             window["-SPEED-"].set_focus(True)
             window["-HEADER_SPEED-"].update(visible=True)
@@ -164,267 +140,73 @@ class keyboardTeleoperation:
             window["-COL6-"].update(visible=True)
         else:
             input = event.split(":")
-            if (input[0] == "t"):
-                window["-key_pressed-"].update(value=input[0])
-                for index, drone_id in enumerate(self.list_drone_id): 
-                    #self.list_uav[index].get_logger().info(str(drone_id[index][1]))
-                    if drone_id[index][1] == True:
-                        
-                        try:
-                            threading.Thread(target=self.take_off, args=(
-                                    self.list_uav[index],), daemon=True).start()
-                        except Exception as e:
-                            print('Error starting work thread.')
-
-            elif (input[0] == "l"):
-                window["-key_pressed-"].update(value=input[0])
-                for index, drone_id in enumerate(self.list_drone_id): 
-                    if drone_id[index][1] == True:
-
-                        try:
-                            threading.Thread(target=self.land, args=(
-                                    self.list_uav[index],), daemon=True).start()
-                        except Exception as e:
-                            print('Error starting work thread.')
-
-            elif (input[0] == "space"):
-                window["-key_pressed-"].update(value=input[0])
-                for index, drone_id in enumerate(self.list_drone_id): 
-                    if drone_id[index][1] == True:
-
-                        try:
-                            threading.Thread(target=self.hover, args=(
-                                    self.list_uav[index],), daemon=True).start()
-                        except Exception as e:
-                            print('Error starting work thread.')
+            self.manage_common_behaviors(window, input)
 
             if (self.control_mode == "-SPEED-"):
-                if (input[0] == "Up"):
-                    window["-key_pressed-"].update(value="↑")
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-
-                            lineal = [self.value_list[0], 0.0, 0.0]
-                            try:
-                                threading.Thread(target=self.move_at_speed, args=(
-                                    self.list_uav[index], lineal, 0.0,), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                elif (input[0] == "Down"):
-                    window["-key_pressed-"].update(value="↓")
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-
-                            lineal = [-self.value_list[0], 0.0, 0.0]
-                            try:
-                                threading.Thread(target=self.move_at_speed, args=(
-                                    self.list_uav[index], lineal, 0.0,), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                elif (input[0] == "Left"):
-                    window["-key_pressed-"].update(value="←")
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-
-                            lineal = [0.0, self.value_list[0], 0.0]
-                            try:
-                                threading.Thread(target=self.move_at_speed, args=(
-                                    self.list_uav[index], lineal, 0.0,), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                elif (input[0] == "Right"):
-                    window["-key_pressed-"].update(value="→")
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-
-                            lineal = [0.0, -self.value_list[0], 0.0]
-                            try:
-                                threading.Thread(target=self.move_at_speed, args=(
-                                    self.list_uav[index], lineal, 0.0,), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                if (input[0] == "w"):
-                    window["-key_pressed-"].update(value=input[0])
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-
-                            lineal = [0.0, 0.0, self.value_list[1]]
-                            try:
-                                threading.Thread(target=self.move_at_speed, args=(
-                                    self.list_uav[index], lineal, 0.0,), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                elif (input[0] == "s"):
-                    window["-key_pressed-"].update(value=input[0])
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-
-                            lineal = [0.0, 0.0, -self.value_list[1]]
-                            try:
-                                threading.Thread(target=self.move_at_speed, args=(
-                                    self.list_uav[index], lineal, 0.0,), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                elif (input[0] == "a"):
-                    window["-key_pressed-"].update(value=input[0])
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-
-                            lineal = [0.0, 0.0, 0.0]
-                            try:
-                                threading.Thread(target=self.move_at_speed, args=(
-                                    self.list_uav[index], lineal, self.value_list[2],), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                elif (input[0] == "d"):
-                    window["-key_pressed-"].update(value=input[0])
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-
-                            lineal = [0.0, 0.0, 0.0]
-                            try:
-                                threading.Thread(target=self.move_at_speed, args=(
-                                    self.list_uav[index], lineal, -self.value_list[2],), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
+                self.manage_speed_behaviors(window, input)
 
             elif (self.control_mode == "-POSE-"):
-
-                if (input[0] == "Up"):
-                    window["-key_pressed-"].update(value="↑")
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-
-                            position = [self.list_uav[index].position[0] + self.value_list[3],
-                                        self.list_uav[index].position[1], self.list_uav[index].position[2]]
-                            #orientation = quaternion_from_euler(self.uav.orientation[0], self.uav.orientation[1], self.uav.orientation[2])
-                            try:
-                                threading.Thread(target=self.go_to_pose, args=(
-                                    self.list_uav[index], position, self.list_uav[index].orientation[2],), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                elif (input[0] == "Down"):
-                    window["-key_pressed-"].update(value="↓")
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-                            position = [self.list_uav[index].position[0] - self.value_list[3],
-                                        self.list_uav[index].position[1], self.list_uav[index].position[2]]
-                    #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
-                            try:
-                                threading.Thread(target=self.go_to_pose, args=(
-                                    self.list_uav[index], position, self.list_uav[index].orientation[2],), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                elif (input[0] == "Left"):
-                    window["-key_pressed-"].update(value="←")
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-                            position = [self.list_uav[index].position[0], self.list_uav[index].position[1] +
-                                        self.value_list[3], self.list_uav[index].position[2]]
-                            #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
-                            try:
-                                threading.Thread(target=self.go_to_pose, args=(
-                                    self.list_uav[index], position, self.list_uav[index].orientation[2],), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                elif (input[0] == "Right"):
-                    window["-key_pressed-"].update(value="→")
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-                            position = [self.list_uav[index].position[0], self.list_uav[index].position[1] -
-                                        self.value_list[3], self.list_uav[index].position[2]]
-                            #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
-                            try:
-                                threading.Thread(target=self.go_to_pose, args=(
-                                    self.list_uav[index], position, self.list_uav[index].orientation[2],), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                if (input[0] == "w"):
-                    window["-key_pressed-"].update(value=input[0])
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-                            position = [self.list_uav[index].position[0], self.list_uav[index].position[1],
-                                        self.list_uav[index].position[2] + self.value_list[4]]
-                            #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
-                            try:
-                                threading.Thread(target=self.go_to_pose, args=(
-                                    self.list_uav[index], position, self.list_uav[index].orientation[2],), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                elif (input[0] == "s"):
-                    window["-key_pressed-"].update(value=input[0])
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-                            position = [self.list_uav[index].position[0], self.list_uav[index].position[1],
-                                        self.list_uav[index].position[2] - self.value_list[4]]
-                            #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
-                            try:
-                                threading.Thread(target=self.go_to_pose, args=(
-                                    self.list_uav[index], position, self.list_uav[index].orientation[2],), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                elif (input[0] == "a"):
-                    window["-key_pressed-"].update(value=input[0])
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-                            position = [self.list_uav[index].position[0],
-                                        self.list_uav[index].position[1], self.list_uav[index].position[2]]
-                            euler = self.list_uav[index].orientation
-                            #orientation = [self.list_uav[index].orientation.x, self.list_uav[index].orientation.y, self.list_uav[index].orientation.z, self.list_uav[index].orientation.w]
-                            yaw = euler[2] + self.value_list[5]
-                            #orientation = quaternion_from_euler(euler[0], euler[1], euler[2])
-                            try:
-                                threading.Thread(target=self.go_to_pose, args=(
-                                    self.list_uav[index], position, yaw,), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-                elif (input[0] == "d"):
-                    window["-key_pressed-"].update(value=input[0])
-                    for index, drone_id in enumerate(self.list_drone_id): 
-                        if drone_id[index][1] == True:
-                            position = [self.list_uav[index].position[0],
-                                        self.list_uav[index].position[1], self.list_uav[index].position[2]]
-                            euler = self.list_uav[index].orientation
-                            yaw = euler[2] - self.value_list[5]
-                            #orientation = [self.uav.orientation.x, self.uav.orientation.y, self.uav.orientation.z, self.uav.orientation.w]
-
-                            #orientation = quaternion_from_euler(euler[0], euler[1], euler[2])
-                            try:
-                                threading.Thread(target=self.go_to_pose, args=(
-                                    self.list_uav[index], position, yaw,), daemon=True).start()
-                            except Exception as e:
-                                print('Error starting work thread.')
-
-            if input[0] == "Delete":
-                window["-key_pressed-"].update(value=input[0])
-                for index, drone_id in enumerate(self.list_drone_id): 
-                    if drone_id[index][1] == True:
-                        try:
-                            threading.Thread(target=self.emergency_stop, args=(
-                                self.list_uav[index],), daemon=True).start()
-                        except Exception as e:
-                            print('Error starting work thread.')
+                self.manage_pose_behaviors(window, input)
 
             if (self.localization_opened):
                 self.execute_localization_window(self.localization_window)
 
-        return True
+    def manage_settings_event(self, window: sg.Window, settings_window: sg.Window, settings_event, settings_value):
 
-    def make_window(self):
+        for idx, value in enumerate(list(settings_value.values())):
+            try:
+                self.value_list[idx] = float(value)
+            except ValueError:
+                print("Invalid Input, setting to 0.0")
+                self.value_list[idx] = 0.0
+                settings_window["-VALUE" +
+                                str(idx) + "-"].update(value="{:0.2f}".format(0.00))
+
+        if settings_event == "Save":
+            jdx = 0
+            for idx, value in enumerate(self.value_list):
+                window["-INPUTTEXT" +
+                        str(jdx+1) + "-"].update(value="{:0.2f}".format(value))
+                window["-INPUTTEXT" +
+                        str(jdx+2) + "-"].update(value="{:0.2f}".format(value))
+                if ((idx != 1) and (idx != 2) and (idx != 4) and (idx != 5) and (idx != 6) and (idx != 7)):
+
+                    window["-INPUTTEXT" +
+                            str(jdx+3) + "-"].update(value="{:0.2f}".format(value))
+                    window["-INPUTTEXT" +
+                            str(jdx+4) + "-"].update(value="{:0.2f}".format(value))
+                    jdx = jdx + 4
+                else:
+                    jdx = jdx + 2
+
+                settings_window["-VALUE" +
+                                str(idx) + "-"].update(value="{:0.2f}".format(value))
+
+    def execute_localization_window(self, localization_window: sg.Window):
+        localization_event, _ = localization_window.read(timeout=1)  # type: ignore
+
+        localization_window["-LOCALIZATION_X-"].update(
+            value="{:0.2f}".format(round(self.uav.position[0], 2)))
+        localization_window["-LOCALIZATION_Y-"].update(
+            value="{:0.2f}".format(round(self.uav.position[1], 2)))
+        localization_window["-LOCALIZATION_Z-"].update(
+            value="{:0.2f}".format(round(self.uav.position[2], 2)))
+
+        localization_window["-LOCALIZATION_R-"].update(
+            value="{:0.2f}".format(round(self.uav.orientation[0], 2)))
+        localization_window["-LOCALIZATION_P-"].update(
+            value="{:0.2f}".format(round(self.uav.orientation[1], 2)))
+        localization_window["-LOCALIZATION_YW-"].update(
+            value="{:0.2f}".format(round(self.uav.orientation[2], 2)))
+
+        # localization_window.refresh()
+        if localization_event == sg.WIN_CLOSED or localization_event == "Exit":
+            self.localization_opened = False
+            localization_window.close()
+
+    # FUNCTIONS THAT BUILD THE GRAPHICAL INTERFACE
+
+    def make_main_window(self):
         sg.theme("DarkBlack1")
 
         col1_layout = [
@@ -536,11 +318,6 @@ class keyboardTeleoperation:
 
         return sg.Window("Keyboard Teleoperation", self.layout, return_keyboard_events=True, use_default_focus=True, resizable=True)
 
-    def tick_window(self):
-        self.window = self.make_window()
-        while self.execute_window(self.window):
-            pass
-
     def make_settings_window(self):
         col_value_settings_layout=[[sg.Text("Speed Control Values", font=self.font_menu)],
                 [sg.Text("Speed value:", font=self.font), sg.InputText(str(
@@ -578,7 +355,6 @@ class keyboardTeleoperation:
 
         return sg.Window("Settings", layout=[[sg.Column(col_value_settings_layout), sg.Column(col_selector_settings_layout, expand_y=True)]], location=self.window.CurrentLocation(), use_default_focus=False)
 
-    
     def make_localization_window(self):
 
         return sg.Window("Localization", location=self.window.CurrentLocation(), use_default_focus=False, size=(330, 200),
@@ -595,27 +371,267 @@ class keyboardTeleoperation:
                         sg.Text("y:", font=self.font), sg.Text("{:0.2f}".format(round(self.list_uav[0].orientation[2], 2)), font=self.font, key="-LOCALIZATION_YW-")],
                         [sg.Button("Exit", font=self.font, pad=((240, 0), (20, 0)))]])
 
-    def execute_localization_window(self, window: sg.Window):
-        e, v = window.read(timeout=1)  # type: ignore
+    # FUNCTIONS THAT MANAGE THE CALLS TO DRONE INTERFACES FUNCTIONS GIVEN A KB INPUT
 
-        window["-LOCALIZATION_X-"].update(
-            value="{:0.2f}".format(round(self.list_uav[0].position[0], 2)))
-        window["-LOCALIZATION_Y-"].update(
-            value="{:0.2f}".format(round(self.list_uav[0].position[1], 2)))
-        window["-LOCALIZATION_Z-"].update(
-            value="{:0.2f}".format(round(self.list_uav[0].position[2], 2)))
+    def manage_common_behaviors(self, window: sg.Window, input):
 
-        window["-LOCALIZATION_R-"].update(
-            value="{:0.2f}".format(round(self.list_uav[0].orientation[0], 2)))
-        window["-LOCALIZATION_P-"].update(
-            value="{:0.2f}".format(round(self.list_uav[0].orientation[1], 2)))
-        window["-LOCALIZATION_YW-"].update(
-            value="{:0.2f}".format(round(self.list_uav[0].orientation[2], 2)))
+        if (input[0] == "t"):
+            window["-key_pressed-"].update(value=input[0])
+            for index, drone_id in enumerate(self.list_drone_id): 
+                #self.list_uav[index].get_logger().info(str(drone_id[index][1]))
+                if drone_id[index][1] == True:
+                    
+                    try:
+                        threading.Thread(target=self.take_off, args=(
+                                self.list_uav[index],), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
 
-        # localization_window.refresh()
-        if e == sg.WIN_CLOSED or e == "Exit":
-            self.localization_opened = False
-            window.close()
+        elif (input[0] == "l"):
+            window["-key_pressed-"].update(value=input[0])
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+
+                    try:
+                        threading.Thread(target=self.land, args=(
+                                self.list_uav[index],), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "space"):
+            window["-key_pressed-"].update(value=input[0])
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+
+                    try:
+                        threading.Thread(target=self.hover, args=(
+                                self.list_uav[index],), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif input[0] == "Delete":
+            window["-key_pressed-"].update(value=input[0])
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+                    try:
+                        threading.Thread(target=self.emergency_stop, args=(
+                            self.list_uav[index],), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+    def manage_speed_behaviors(self, window: sg.Window, input):
+
+        if (input[0] == "Up"):
+            window["-key_pressed-"].update(value="↑")
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+
+                    lineal = [self.value_list[0], 0.0, 0.0]
+                    try:
+                        threading.Thread(target=self.move_at_speed, args=(
+                            self.list_uav[index], lineal, 0.0,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "Down"):
+            window["-key_pressed-"].update(value="↓")
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+
+                    lineal = [-self.value_list[0], 0.0, 0.0]
+                    try:
+                        threading.Thread(target=self.move_at_speed, args=(
+                            self.list_uav[index], lineal, 0.0,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "Left"):
+            window["-key_pressed-"].update(value="←")
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+
+                    lineal = [0.0, self.value_list[0], 0.0]
+                    try:
+                        threading.Thread(target=self.move_at_speed, args=(
+                            self.list_uav[index], lineal, 0.0,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "Right"):
+            window["-key_pressed-"].update(value="→")
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+
+                    lineal = [0.0, -self.value_list[0], 0.0]
+                    try:
+                        threading.Thread(target=self.move_at_speed, args=(
+                            self.list_uav[index], lineal, 0.0,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "w"):
+            window["-key_pressed-"].update(value=input[0])
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+
+                    lineal = [0.0, 0.0, self.value_list[1]]
+                    try:
+                        threading.Thread(target=self.move_at_speed, args=(
+                            self.list_uav[index], lineal, 0.0,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "s"):
+            window["-key_pressed-"].update(value=input[0])
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+
+                    lineal = [0.0, 0.0, -self.value_list[1]]
+                    try:
+                        threading.Thread(target=self.move_at_speed, args=(
+                            self.list_uav[index], lineal, 0.0,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "a"):
+            window["-key_pressed-"].update(value=input[0])
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+
+                    lineal = [0.0, 0.0, 0.0]
+                    try:
+                        threading.Thread(target=self.move_at_speed, args=(
+                            self.list_uav[index], lineal, self.value_list[2],), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "d"):
+            window["-key_pressed-"].update(value=input[0])
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+
+                    lineal = [0.0, 0.0, 0.0]
+                    try:
+                        threading.Thread(target=self.move_at_speed, args=(
+                            self.list_uav[index], lineal, -self.value_list[2],), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+    def manage_pose_behaviors(self, window: sg.Window, input):
+
+        if (input[0] == "Up"):
+            window["-key_pressed-"].update(value="↑")
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+
+                    position = [self.list_uav[index].position[0] + self.value_list[3],
+                                self.list_uav[index].position[1], self.list_uav[index].position[2]]
+                    #orientation = quaternion_from_euler(self.uav.orientation[0], self.uav.orientation[1], self.uav.orientation[2])
+                    try:
+                        threading.Thread(target=self.go_to_pose, args=(
+                            self.list_uav[index], position, self.list_uav[index].orientation[2],), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "Down"):
+            window["-key_pressed-"].update(value="↓")
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+                    position = [self.list_uav[index].position[0] - self.value_list[3],
+                                self.list_uav[index].position[1], self.list_uav[index].position[2]]
+            #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
+                    try:
+                        threading.Thread(target=self.go_to_pose, args=(
+                            self.list_uav[index], position, self.list_uav[index].orientation[2],), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "Left"):
+            window["-key_pressed-"].update(value="←")
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+                    position = [self.list_uav[index].position[0], self.list_uav[index].position[1] +
+                                self.value_list[3], self.list_uav[index].position[2]]
+                    #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
+                    try:
+                        threading.Thread(target=self.go_to_pose, args=(
+                            self.list_uav[index], position, self.list_uav[index].orientation[2],), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "Right"):
+            window["-key_pressed-"].update(value="→")
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+                    position = [self.list_uav[index].position[0], self.list_uav[index].position[1] -
+                                self.value_list[3], self.list_uav[index].position[2]]
+                    #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
+                    try:
+                        threading.Thread(target=self.go_to_pose, args=(
+                            self.list_uav[index], position, self.list_uav[index].orientation[2],), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        if (input[0] == "w"):
+            window["-key_pressed-"].update(value=input[0])
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+                    position = [self.list_uav[index].position[0], self.list_uav[index].position[1],
+                                self.list_uav[index].position[2] + self.value_list[4]]
+                    #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
+                    try:
+                        threading.Thread(target=self.go_to_pose, args=(
+                            self.list_uav[index], position, self.list_uav[index].orientation[2],), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "s"):
+            window["-key_pressed-"].update(value=input[0])
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+                    position = [self.list_uav[index].position[0], self.list_uav[index].position[1],
+                                self.list_uav[index].position[2] - self.value_list[4]]
+                    #orientation = quaternion_from_euler(self.list_uav[index].orientation[0], self.list_uav[index].orientation[1], self.list_uav[index].orientation[2])
+                    try:
+                        threading.Thread(target=self.go_to_pose, args=(
+                            self.list_uav[index], position, self.list_uav[index].orientation[2],), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "a"):
+            window["-key_pressed-"].update(value=input[0])
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+                    position = [self.list_uav[index].position[0],
+                                self.list_uav[index].position[1], self.list_uav[index].position[2]]
+                    euler = self.list_uav[index].orientation
+                    #orientation = [self.list_uav[index].orientation.x, self.list_uav[index].orientation.y, self.list_uav[index].orientation.z, self.list_uav[index].orientation.w]
+                    yaw = euler[2] + self.value_list[5]
+                    #orientation = quaternion_from_euler(euler[0], euler[1], euler[2])
+                    try:
+                        threading.Thread(target=self.go_to_pose, args=(
+                            self.list_uav[index], position, yaw,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+        elif (input[0] == "d"):
+            window["-key_pressed-"].update(value=input[0])
+            for index, drone_id in enumerate(self.list_drone_id): 
+                if drone_id[index][1] == True:
+                    position = [self.list_uav[index].position[0],
+                                self.list_uav[index].position[1], self.list_uav[index].position[2]]
+                    euler = self.list_uav[index].orientation
+                    yaw = euler[2] - self.value_list[5]
+                    #orientation = [self.uav.orientation.x, self.uav.orientation.y, self.uav.orientation.z, self.uav.orientation.w]
+
+                    #orientation = quaternion_from_euler(euler[0], euler[1], euler[2])
+                    try:
+                        threading.Thread(target=self.go_to_pose, args=(
+                            self.list_uav[index], position, yaw,), daemon=True).start()
+                    except Exception as e:
+                        print('Error starting work thread.')
+
+    # FUNCTIONS TO CALL THE DRONE INTERFACES FUNCTIONS
 
     def shutdown(self):
         self.t.join()
@@ -625,7 +641,6 @@ class keyboardTeleoperation:
         uav.offboard()
         uav.takeoff(1.0, 1.0)
         
-
     def land(self, uav: DroneInterface):
         uav.land(0.5)
 
