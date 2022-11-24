@@ -74,7 +74,8 @@ class keyboardTeleoperation:
         return True
 
     def manage_main_window_event(self, window: sg.Window, event, value):
-
+        selection_values = list(value.values())
+        #self.list_uav[0].get_logger().info(str(selection_values))
         if event == "Localization":
             if (not self.localization_opened):
                 self.localization_window = self.make_localization_window()
@@ -91,7 +92,29 @@ class keyboardTeleoperation:
                     settings_window.close()
                     break
 
-                self.manage_settings_event(window, settings_window, settings_event, settings_value)   
+                self.manage_settings_event(window, settings_window, settings_event, settings_value)
+
+        elif event == "All":
+            
+            if (list(value.values())[-1]):
+                for index, value in enumerate(selection_values[:-1]):
+                    window[self.list_drone_id[index][0]].update(True)
+            else:
+                for index, value in enumerate(selection_values[:-1]):
+                    window[self.list_drone_id[index][0]].update(False)
+
+            for drone_id in self.list_drone_id:
+                 drone_id[1] = True
+
+        elif event in [x for l in self.list_drone_id for x in l]:
+
+            if all(selection_values[:-1]):
+                window["All"].update(True)
+            else:
+                window["All"].update(False)
+
+            for index, value in enumerate(selection_values[:-1]):
+                self.list_drone_id[index][1] = bool(value)
 
         elif event == "-SPEED-":
             self.control_mode = event
@@ -165,23 +188,7 @@ class keyboardTeleoperation:
                 settings_window["-VALUE" +
                                 str(idx) + "-"].update(value="{:0.2f}".format(0.00))
 
-        if settings_event == "All":
-            
-            if (list(settings_value.values())[-1]):
-                for index, value in enumerate(selection_values[:-1]):
-                    settings_window[self.list_drone_id[index][0]].update(True)
-            else:
-                for index, value in enumerate(selection_values[:-1]):
-                    settings_window[self.list_drone_id[index][0]].update(False)
-
-        elif settings_event in [x for l in self.list_drone_id for x in l]:
-
-            if all(selection_values[:-1]):
-                settings_window["All"].update(True)
-            else:
-                settings_window["All"].update(False)
-
-        elif settings_event == "Save":
+        if settings_event == "Save":
             jdx = 0
             for idx, value in enumerate(self.value_list):
                 window["-INPUTTEXT" +
@@ -200,11 +207,6 @@ class keyboardTeleoperation:
 
                 settings_window["-VALUE" +
                                 str(idx) + "-"].update(value="{:0.2f}".format(value))
-
-            for index, value in enumerate(selection_values[:-1]):
-                self.list_drone_id[index][1] = value
-
-            
 
     def execute_localization_window(self, localization_window: sg.Window):
         localization_event, _ = localization_window.read(timeout=1)  # type: ignore
@@ -239,6 +241,7 @@ class keyboardTeleoperation:
             [sg.Text("space", font=self.font)],
             [sg.Text("del", font=self.font)],
             [sg.Text("r", font=self.font)]]
+            
         col2_layout = [
             [sg.Text("Take off", font=self.font)],
             [sg.Text("Land", font=self.font)],
@@ -252,6 +255,7 @@ class keyboardTeleoperation:
             [sg.Text("←", font=self.font)],
             [sg.Text("→", font=self.font)],
             [sg.Text("", font=self.font)]]
+
         col4_layout = [
             [sg.Text("Increase forward speed", font=self.font), sg.Text(
                 "1.00", font=self.font, key="-INPUTTEXT1-"), sg.Text("m/s", font=self.font)],
@@ -323,22 +327,39 @@ class keyboardTeleoperation:
             [sg.Button("Attitude mode", font=self.font, key="-ATTITUDE-")]
         ]
 
+        main_buttons_layout = [
+            [sg.Text("BASIC MOTIONS", pad=((10, 280), (10, 0)), font=self.font_menu), sg.Text("SPEED CONTROL", pad=((0, 0), (10, 0)), font=self.font_menu, key="-SP_CONTROL-"), sg.Text("ATTITUDE CONTROL",
+                pad=((0, 0), (10, 0)), font=self.font_menu, visible=False, key="-AT_CONTROL-"), sg.Text("POSE CONTROL", pad=((0, 0), (10, 0)), font=self.font_menu, visible=False, key="-POS_CONTROL-")],
+            [sg.Column(col1_layout, element_justification='left'), sg.Column(col2_layout, element_justification='left', pad=((0, 190), (0, 0))),
+            sg.Column(col3_layout, element_justification='left', justification="left"), sg.Column(col4_layout, element_justification='left', justification="left", key="-COL4-"),
+            sg.Column(col5_layout, element_justification='left', visible=False, key="-COL5-"), sg.Column(col7_layout, element_justification='left', visible=False, key="-COL7-")],
+            [sg.Text("TELEOPERATION MODE SELECTION", pad=((10, 100), (10, 0)), font=self.font_menu), sg.Text(
+                "POSE CONTROL", pad=((0, 0), (10, 0)), font=self.font_menu, key="-P_CONTROL-", visible=False)],
+            [sg.Column(col_button_layout, element_justification='left', pad=((0, 270), (0, 0))), sg.Column(
+                col8_layout, element_justification='left', key="-COL8-"), sg.Column(col6_layout, element_justification='left', key="-COL6-", visible=False), sg.Column(col6B_layout, element_justification='left', key="-COL6B-")]]
+
+        col_selector_settings_layout = list()
+
+        all_selector = True
+
+        for drone_id in self.list_drone_id: 
+            col_selector_settings_layout.append(
+                [sg.CB(drone_id[0], key=drone_id[0], enable_events=True, font=self.font, background_color="grey", default=drone_id[1])])
+            if not drone_id[1]:
+                all_selector = False
+
+        frame = sg.Frame("Drone selection control", layout=[[sg.Column(col_selector_settings_layout, expand_y=True, scrollable=True, vertical_scroll_only=True, background_color="grey")],
+            [sg.CB("All", key="All", enable_events=True, font=self.font, background_color="grey", expand_x=True, default=all_selector)]], vertical_alignment="top", size=(200, 300), expand_y=True, expand_x=True)
+
         self.layout = [
-                        [sg.Button("Settings", font=self.font_menu), sg.Text("|", font=self.font_menu), sg.Button("Localization", font=self.font_menu), sg.Text("|", font=self.font_menu), sg.Text("Teleoperation mode: Speed mode", justification="left", font=self.font_menu, key="-HEADER_SPEED-", visible=True, pad=((78, 0), (0, 0))),
-                        sg.Text("Teleoperation mode: Pose mode", justification="left",
-                                font=self.font_menu, key="-HEADER_POSE-", visible=False, pad=((78, 0), (0, 0))),
-                        sg.Text("Teleoperation mode: Attitude mode", justification="left", font=self.font_menu, key="-HEADER_ATTITUDE-", visible=False, pad=((78, 0), (0, 0)))],
-                       [sg.HSeparator(pad=(0, 10))],
-                       [sg.Text("BASIC MOTIONS", pad=((10, 280), (10, 0)), font=self.font_menu), sg.Text("SPEED CONTROL", pad=((0, 0), (10, 0)), font=self.font_menu, key="-SP_CONTROL-"), sg.Text("ATTITUDE CONTROL",
-                                                                                                                                                                                         pad=((0, 0), (10, 0)), font=self.font_menu, visible=False, key="-AT_CONTROL-"), sg.Text("POSE CONTROL", pad=((0, 0), (10, 0)), font=self.font_menu, visible=False, key="-POS_CONTROL-")],
-                       [sg.Column(col1_layout, element_justification='left'), sg.Column(col2_layout, element_justification='left', pad=((0, 190), (0, 0))),
-                        sg.Column(col3_layout, element_justification='left', justification="left"), sg.Column(col4_layout, element_justification='left', justification="left", key="-COL4-"), sg.Column(col5_layout, element_justification='left', visible=False, key="-COL5-"), sg.Column(col7_layout, element_justification='left', visible=False, key="-COL7-")],
-                       [sg.Text("TELEOPERATION MODE SELECTION", pad=((10, 100), (10, 0)), font=self.font_menu), sg.Text(
-                           "POSE CONTROL", pad=((0, 0), (10, 0)), font=self.font_menu, key="-P_CONTROL-", visible=False)],
-                       [sg.Column(col_button_layout, element_justification='left', pad=((0, 270), (0, 0))), sg.Column(
-                           col8_layout, element_justification='left', key="-COL8-"), sg.Column(col6_layout, element_justification='left', key="-COL6-", visible=False), sg.Column(col6B_layout, element_justification='left', key="-COL6B-")],
-                       [sg.HSeparator(pad=(0, 10))],
-                       [sg.Text("Last key pressed:", font=self.font_menu), sg.Text("", font=self.font_menu, key="-key_pressed-")]]
+            [sg.Button("Settings", font=self.font_menu), sg.Text("|", font=self.font_menu), sg.Button("Localization", font=self.font_menu), sg.Text("|", font=self.font_menu), sg.Text("Teleoperation mode: Speed mode", justification="left", font=self.font_menu, key="-HEADER_SPEED-", visible=True, pad=((78, 0), (0, 0))),
+            sg.Text("Teleoperation mode: Pose mode", justification="left",
+                    font=self.font_menu, key="-HEADER_POSE-", visible=False, pad=((78, 0), (0, 0))),
+            sg.Text("Teleoperation mode: Attitude mode", justification="left", font=self.font_menu, key="-HEADER_ATTITUDE-", visible=False, pad=((78, 0), (0, 0)))],
+            [sg.HSeparator(pad=(0, 10))],
+            [sg.Column(layout = main_buttons_layout), frame],
+            [sg.HSeparator(pad=(0, 10))],
+            [sg.Text("Last key pressed:", font=self.font_menu), sg.Text("", font=self.font_menu, key="-key_pressed-")]]
 
         return sg.Window("Keyboard Teleoperation", self.layout, return_keyboard_events=True, use_default_focus=True, resizable=True)
 
@@ -374,20 +395,20 @@ class keyboardTeleoperation:
                     "", font=self.font)],
                 [sg.Button("Save", font=self.font), sg.Button("Exit", font=self.font, pad=((150, 0), (0, 0)))]]
 
-        col_selector_settings_layout = list()
+        # col_selector_settings_layout = list()
 
-        all_selector = True
+        # all_selector = True
 
-        for drone_id in self.list_drone_id: 
-            col_selector_settings_layout.append(
-                [sg.CB(drone_id[0], key=drone_id[0], enable_events=True, font=self.font, background_color="grey", default=drone_id[1])])
-            if not drone_id[1]:
-                all_selector = False
+        # for drone_id in self.list_drone_id: 
+        #     col_selector_settings_layout.append(
+        #         [sg.CB(drone_id[0], key=drone_id[0], enable_events=True, font=self.font, background_color="grey", default=drone_id[1])])
+        #     if not drone_id[1]:
+        #         all_selector = False
 
-        frame = sg.Frame("Drone selection control", layout=[[sg.Column(col_selector_settings_layout, expand_y=True, scrollable=True, vertical_scroll_only=True, background_color="grey")],
-            [sg.CB("All", key="All", enable_events=True, font=self.font, background_color="grey", expand_x=True, default=all_selector)]], vertical_alignment="top", size=(200, 300))
+        # frame = sg.Frame("Drone selection control", layout=[[sg.Column(col_selector_settings_layout, expand_y=True, scrollable=True, vertical_scroll_only=True, background_color="grey")],
+        #     [sg.CB("All", key="All", enable_events=True, font=self.font, background_color="grey", expand_x=True, default=all_selector)]], vertical_alignment="top", size=(200, 300))
 
-        return sg.Window("Settings", layout=[[sg.Column(col_value_settings_layout), frame]],
+        return sg.Window("Settings", layout=[[sg.Column(col_value_settings_layout)]],
                  location=self.window.CurrentLocation(), use_default_focus=False)
 
     def make_localization_window(self):
@@ -556,11 +577,13 @@ class keyboardTeleoperation:
 
         if (input[0] == "Up"):
             window["-key_pressed-"].update(value="↑")
-            for index, drone_id in enumerate(self.list_drone_id): 
+            for index, drone_id in enumerate(self.list_drone_id):
+                
                 if drone_id[1] == True:
 
                     position = [self.list_uav[index].position[0] + self.value_list[3],
                                 self.list_uav[index].position[1], self.list_uav[index].position[2]]
+                    
                     #orientation = quaternion_from_euler(self.uav.orientation[0], self.uav.orientation[1], self.uav.orientation[2])
                     try:
                         threading.Thread(target=self.go_to_pose, args=(
@@ -689,7 +712,7 @@ class keyboardTeleoperation:
     def go_to_pose(self, uav: DroneInterface, position, orientation):
         uav.position_motion_handler.send_position_command_with_yaw_angle(
             position, None, self.pose_frame_id, self.twist_frame_id, orientation)
-
+        
     def emergency_stop(self, uav: DroneInterface):
         uav.send_emergency_killswitch_to_aircraft()
 
