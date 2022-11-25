@@ -16,6 +16,8 @@ setup(
          glob(os.path.join('launch', '*.launch.py'))),
         ('share/' + package_name,
          [package_name + '/keyboard_teleoperation.py']),
+        ('share/' + package_name,
+         [package_name + '/keyboard_interface.py']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
