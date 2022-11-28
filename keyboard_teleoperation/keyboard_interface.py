@@ -112,26 +112,40 @@ class KeyboardInterface:
             [sg.Column(col_button_layout, element_justification='left', pad=((0, 270), (0, 0))), sg.Column(
                 col8_layout, element_justification='left', key="-COL8-"), sg.Column(col6_layout, element_justification='left', key="-COL6-", visible=False), sg.Column(col6B_layout, element_justification='left', key="-COL6B-")]]
 
-        col_selector_settings_layout = list()
+        col_selection_layout = list()
+        col_active_behavior_layout = ["Behavior Take Off"]
+        col_paused_behavior_layout = []
 
         all_selector = True
 
         for drone_id in drone_id_list: 
-            col_selector_settings_layout.append(
+            col_selection_layout.append(
                 [sg.CB(drone_id[0], key=drone_id[0], enable_events=True, font=self.font, background_color="grey", default=drone_id[1])])
             if not drone_id[1]:
                 all_selector = False
 
-        frame = sg.Frame("Drone selection control", layout=[[sg.Column(col_selector_settings_layout, expand_y=True, scrollable=True, vertical_scroll_only=True, background_color="grey")],
-            [sg.CB("All", key="All", enable_events=True, font=self.font, background_color="grey", expand_x=True, default=all_selector)]], vertical_alignment="top", size=(200, 300), expand_y=True, expand_x=True)
+        selection_frame = sg.Frame("Drone selection control", layout=[[sg.Column(col_selection_layout, expand_y=True, scrollable=True, vertical_scroll_only=True, background_color="grey")],
+            [sg.CB("All", key="All", enable_events=True, font=self.font, background_color="grey", expand_x=True, default=all_selector)]], vertical_alignment="top", size=(200, 300), expand_y=True)
+
+        behavior_frame = sg.Frame("Behavior control",key="-BEHAVIOR CONTROL-",
+        layout=[[sg.Text("Active Behaviors", font=self.menu_font, background_color="grey", expand_x=True, justification="center"), sg.Text("Paused Behaviors", font=self.menu_font, background_color="grey", expand_x=True, justification="center")],
+        [sg.Listbox(col_active_behavior_layout, background_color="grey", font=self.font,
+        select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE, highlight_text_color="white", text_color="white", highlight_background_color="blue", expand_y=True, size=(17,)),
+        sg.Listbox(col_paused_behavior_layout, background_color="grey", font=self.font,
+        select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE, highlight_text_color="white", text_color="white", highlight_background_color="blue", expand_y=True, size=(17,))],
+        [sg.Button(" Pause ", font=self.font, key="-PAUSE_BEHAVIORS-", expand_x=True), sg.Button("Resume", font=self.font, key="-RESUME_BEHAVIORS-", expand_x=True)]],
+        vertical_alignment="top", size=(470, 300), expand_y=True, visible=False)
+        
 
         self.layout = [
-            [sg.Button("Settings", font=self.menu_font), sg.Text("|", font=self.menu_font), sg.Button("Localization", font=self.menu_font), sg.Text("|", font=self.menu_font), sg.Text("Teleoperation mode: Speed mode", justification="left", font=self.menu_font, key="-HEADER_SPEED-", visible=True, pad=((78, 0), (0, 0))),
+            [sg.Button("Settings", font=self.menu_font), sg.Text("|", font=self.menu_font), sg.Button("Localization", font=self.menu_font), sg.Text("|", font=self.menu_font),
+            sg.Button("Behavior control", font=self.menu_font, key="-BEHAVIOR-"),
+            sg.Text("Teleoperation mode: Speed mode", justification="left", font=self.menu_font, key="-HEADER_SPEED-", visible=True, pad=((78, 0), (0, 0))),
             sg.Text("Teleoperation mode: Pose mode", justification="left",
                     font=self.menu_font, key="-HEADER_POSE-", visible=False, pad=((78, 0), (0, 0))),
             sg.Text("Teleoperation mode: Attitude mode", justification="left", font=self.menu_font, key="-HEADER_ATTITUDE-", visible=False, pad=((78, 0), (0, 0)))],
             [sg.HSeparator(pad=(0, 10))],
-            [sg.Column(layout = main_buttons_layout), frame],
+            [sg.Column(layout = main_buttons_layout), selection_frame, behavior_frame],
             [sg.HSeparator(pad=(0, 10))],
             [sg.Text("Last key pressed:", font=self.menu_font), sg.Text("", font=self.menu_font, key="-key_pressed-")]]
 

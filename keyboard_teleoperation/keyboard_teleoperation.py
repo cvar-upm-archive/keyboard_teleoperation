@@ -75,8 +75,8 @@ class keyboardTeleoperation:
         return True
 
     def manage_main_window_event(self, window: sg.Window, event, value):
-        selection_values = list(value.values())
-        #self.uav_list[0].get_logger().info(str(selection_values))
+        selection_values = list(value.values())[:len(self.drone_id_list)+1]
+        self.uav_list[0].get_logger().info(str(selection_values))
         if event == "Localization":
             if (not self.localization_opened):
                 self.localization_window = self.kb_interface.make_localization_window(location=window.current_location(), uav_list=self.uav_list)
@@ -97,7 +97,7 @@ class keyboardTeleoperation:
 
         elif event == "All":
             
-            if (list(value.values())[-1]):
+            if (selection_values[-1]):
                 for index, value in enumerate(selection_values[:-1]):
                     window[self.drone_id_list[index][0]].update(True)
             else:
@@ -117,7 +117,7 @@ class keyboardTeleoperation:
             for index, value in enumerate(selection_values[:-1]):
                 self.drone_id_list[index][1] = bool(value)
 
-        elif event in ["-SPEED-", "-POSE-", "-ATTITUDE-"]:
+        elif event in ["-SPEED-", "-POSE-", "-ATTITUDE-", "-BEHAVIOR-"]:
             self.update_main_window_mode(window, event)
 
         else:
@@ -157,6 +157,9 @@ class keyboardTeleoperation:
         elif event == "-ATTITUDE-":
             self.control_mode = event
             self.update_window_to_attitude(window)
+
+        elif event == "-BEHAVIOR-":
+            window["-BEHAVIOR CONTROL-"].update(visible=(not window["-BEHAVIOR CONTROL-"].visible))
 
     def manage_settings_event(self, window: sg.Window, settings_window: sg.Window, settings_event, settings_value):
         numeric_values = list(settings_value.values())[0:len(self.value_list)]
