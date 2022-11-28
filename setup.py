@@ -18,6 +18,8 @@ setup(
          [package_name + '/keyboard_teleoperation.py']),
         ('share/' + package_name,
          [package_name + '/keyboard_interface.py']),
+        ('share/' + package_name,
+         [package_name + '/drone_manager.py']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
