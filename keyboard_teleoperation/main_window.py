@@ -1,14 +1,29 @@
 import PySimpleGUI as sg
-from python_interface.drone_interface import DroneInterface
+from settings_window import SettingsWindow
+from localization_window import LocalizationWindow
+from drone_manager import DroneManager
 
-class KeyboardInterface:
-    def __init__(self, theme, font, menu_font):
-        sg.theme(theme)
+class MainWindow(sg.Window):
+    def __init__(self, drone_manager: DroneManager, font, menu_font, drone_id_list, value_list, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.settings_window = SettingsWindow(font=font, menu_font=menu_font, value_list=value_list, title="Settings", enable_close_attempted_event=True)
+        self.localization_window = LocalizationWindow(font=font, menu_font=menu_font, uav_list=drone_manager.uav_list, title="Localization",
+         size=(330, 200), use_default_focus=False, enable_close_attempted_event=True)
+
         self.font = font
         self.menu_font = menu_font
-
-    def make_main_window(self, drone_id_list):
+        self.return_keyboard_events=True
+        self.use_default_focus=True
+        self.resizable=True
+        self.drone_id_list = drone_id_list
+        self.drone_manager = drone_manager
+        self.control_mode = "-SPEED-"
+        self.value_list = value_list
+        self.localization_opened = False
         
+    def make_main_window(self):
+
         col1_layout = [
             [sg.Text("t", font=self.font)],
             [sg.Text("l", font=self.font)],
@@ -118,7 +133,7 @@ class KeyboardInterface:
 
         all_selector = True
 
-        for drone_id in drone_id_list: 
+        for drone_id in self.drone_id_list: 
             col_selection_layout.append(
                 [sg.CB(drone_id[0], key=drone_id[0], enable_events=True, font=self.font, background_color="grey", default=drone_id[1])])
             if not drone_id[1]:
@@ -136,8 +151,7 @@ class KeyboardInterface:
         [sg.Button(" Pause ", font=self.font, key="-PAUSE_BEHAVIORS-", expand_x=True), sg.Button("Resume", font=self.font, key="-RESUME_BEHAVIORS-", expand_x=True)]],
         vertical_alignment="top", size=(470, 300), expand_y=True, visible=False)
         
-
-        self.layout = [
+        self.layout([
             [sg.Button("Settings", font=self.menu_font), sg.Text("|", font=self.menu_font), sg.Button("Localization", font=self.menu_font), sg.Text("|", font=self.menu_font),
             sg.Button("Behavior control", font=self.menu_font, key="-BEHAVIOR-"),
             sg.Text("Teleoperation mode: Speed mode", justification="left", font=self.menu_font, key="-HEADER_SPEED-", visible=True, pad=((78, 0), (0, 0))),
@@ -147,57 +161,154 @@ class KeyboardInterface:
             [sg.HSeparator(pad=(0, 10))],
             [sg.Column(layout = main_buttons_layout), selection_frame, behavior_frame],
             [sg.HSeparator(pad=(0, 10))],
-            [sg.Text("Last key pressed:", font=self.menu_font), sg.Text("", font=self.menu_font, key="-key_pressed-")]]
+            [sg.Text("Last key pressed:", font=self.menu_font), sg.Text("", font=self.menu_font, key="-key_pressed-")]])
 
-        return sg.Window("Keyboard Teleoperation", self.layout, return_keyboard_events=True, use_default_focus=True, resizable=True)
+    def event_handler(self, event, value):
 
-    def make_settings_window(self, location, value_list):
-        col_value_settings_layout=[[sg.Text("Speed Control Values", font=self.menu_font)],
-            [sg.Text("Speed value:", font=self.font), sg.InputText(str(
-                "{:0.2f}".format(value_list[0])), font=self.font, key="-VALUE0-", size=(5, 3), background_color="white"), sg.Text("m/s", font=self.font)],
-            [sg.Text("Vertical value:", font=self.font), sg.InputText(str(
-                "{:0.2f}".format(value_list[1])), font=self.font, key="-VALUE1-", size=(5, 3), background_color="white"), sg.Text("m/s", font=self.font)],
-            [sg.Text("Turn speed value:", font=self.font), sg.InputText(str(
-                "{:0.2f}".format(value_list[2])), font=self.font, key="-VALUE2-", size=(5, 3), background_color="white"), sg.Text("rad/s", font=self.font)],
-            [sg.Text(
-                "", font=self.font)],
-            [sg.Text(
-                "Position control values:", font=self.menu_font)],
-            [sg.Text("Position value:", font=self.font), sg.InputText(str(
-                "{:0.2f}".format(value_list[3])), font=self.font, key="-VALUE3-", size=(5, 3), background_color="white"), sg.Text("m", font=self.font)],
-            [sg.Text("Altitude value:", font=self.font), sg.InputText(str(
-                "{:0.2f}".format(value_list[4])), font=self.font, key="-VALUE4-", size=(5, 3), background_color="white"), sg.Text("m", font=self.font)],
-            [sg.Text("Turn angle value:", font=self.font), sg.InputText(str(
-                "{:0.2f}".format(value_list[5])), font=self.font, key="-VALUE5-", size=(5, 3), background_color="white"), sg.Text("rad", font=self.font)],
-            [sg.Text(
-                "", font=self.font)],
-            [sg.Text(
-                "Attitude control values:", font=self.menu_font)],
-            [sg.Text("Pitch angle value:", font=self.font), sg.InputText(str(
-                "{:0.2f}".format(value_list[6])), font=self.font, key="-VALUE6-", size=(5, 3), background_color="white"), sg.Text("rad", font=self.font)],
-            [sg.Text("Roll angle value:", font=self.font), sg.InputText(str(
-                "{:0.2f}".format(value_list[7])), font=self.font, key="-VALUE7-", size=(5, 3), background_color="white"), sg.Text("rad", font=self.font)],
-            [sg.Text("Attitude duration:", font=self.font), sg.InputText(str(
-                "{:0.2f}".format(value_list[8])), font=self.font, key="-VALUE8-", size=(5, 3), background_color="white"), sg.Text("s", font=self.font)],
-            [sg.Text(
-                "", font=self.font)],
-            [sg.Button("Save", font=self.font), sg.Button("Exit", font=self.font, pad=((150, 0), (0, 0)))]]
+        if event == sg.WIN_CLOSED:
+            if (self.localization_opened):
+                self.localization_window.close()
+            return False
 
-        return sg.Window("Settings", layout=[[sg.Column(col_value_settings_layout)]],
-                 location=location, use_default_focus=False)
+        selection_values = list(value.values())[:len(self.drone_id_list)+1]
 
-    def make_localization_window(self, location, uav_list: list[DroneInterface]):
+        if event == "Localization": #Non-Blocking
+            if (not self.localization_opened):
+                self.localization_window.make_localization_window(location=self.current_location())
 
-        return sg.Window("Localization", location=location, use_default_focus=False, size=(330, 200),
-            layout=[[sg.Text("Position", font=self.menu_font)],
-                    [sg.Text("x:", font=self.font), sg.Text("{:0.2f}".format(round(uav_list[0].position[0], 2)), font=self.font, key="-LOCALIZATION_X-"), sg.Text(",", font=self.font),
-                    sg.Text("y:", font=self.font), sg.Text("{:0.2f}".format(round(
-                        uav_list[0].position[1], 2)), font=self.font, key="-LOCALIZATION_Y-"), sg.Text(",", font=self.font),
-                    sg.Text("z:", font=self.font), sg.Text("{:0.2f}".format(round(uav_list[0].position[2], 2)), font=self.font, key="-LOCALIZATION_Z-")],
-                    [sg.Text(
-                        "Orientation", font=self.menu_font)],
-                    [sg.Text("r:", font=self.font), sg.Text("{:0.2f}".format(round(uav_list[0].orientation[0], 2)), font=self.font, key="-LOCALIZATION_R-"), sg.Text(",", font=self.font),
-                    sg.Text("p:", font=self.font), sg.Text("{:0.2f}".format(round(
-                        uav_list[0].orientation[1], 2)), font=self.font, key="-LOCALIZATION_P-"), sg.Text(",", font=self.font),
-                    sg.Text("y:", font=self.font), sg.Text("{:0.2f}".format(round(uav_list[0].orientation[2], 2)), font=self.font, key="-LOCALIZATION_YW-")],
-                    [sg.Button("Exit", font=self.font, pad=((240, 0), (20, 0)))]])
+                if self.localization_window._Hidden:
+                    self.localization_window.move(self.current_location()[0], self.current_location()[1])
+                    self.localization_window.un_hide()
+
+                self.localization_opened = True
+
+        elif event == "Settings": #Blocking 
+            self.settings_window.make_settings_window(location=self.current_location())
+            
+            if self.settings_window._Hidden:
+                self.settings_window.move(self.current_location()[0], self.current_location()[1])
+                self.settings_window.un_hide()
+
+            while (True):
+                settings_event, settings_value = self.settings_window.read()  # type: ignore
+
+                if not self.settings_window.event_handler(self, settings_event, settings_value):
+                    break
+
+        elif event == "All":
+            
+            if (selection_values[-1]):
+                for index, value in enumerate(selection_values[:-1]):
+                    self[self.drone_id_list[index][0]].update(True)
+            else:
+                for index, value in enumerate(selection_values[:-1]):
+                    self[self.drone_id_list[index][0]].update(False)
+
+            for drone_id in self.drone_id_list:
+                 drone_id[1] = True
+
+        elif event in [x for l in self.drone_id_list for x in l]:
+
+            if all(selection_values[:-1]):
+                self["All"].update(True)
+            else:
+                self["All"].update(False)
+
+            for index, value in enumerate(selection_values[:-1]):
+                self.drone_id_list[index][1] = bool(value)
+
+        elif event in ["-SPEED-", "-POSE-", "-ATTITUDE-", "-BEHAVIOR-"]:
+            self.update_main_window_mode(event)
+
+        else:
+            input = event.split(":")
+            if input[0] in {"t","l","space","Delete","w","s","a","d"}:
+                self["-key_pressed-"].update(value=input[0])
+            elif (input[0] == "Up"):
+                self["-key_pressed-"].update(value="↑")
+            elif (input[0] == "Down"):
+                self["-key_pressed-"].update(value="↓")
+            elif (input[0] == "Left"):
+                self["-key_pressed-"].update(value="←")
+            elif (input[0] == "Right"):
+                self["-key_pressed-"].update(value="→")
+            
+            self.drone_manager.manage_common_behaviors(input[0])
+
+            if (self.control_mode == "-SPEED-"):
+                self.drone_manager.manage_speed_behaviors(input[0], self.value_list)
+
+            elif (self.control_mode == "-POSE-"):
+                self.drone_manager.manage_pose_behaviors(input[0], self.value_list)
+
+            if (self.localization_opened):
+                self.localization_opened = self.localization_window.execute_localization_window()
+            
+        return True
+
+    def update_main_window_mode(self, event):
+
+        if event == "-SPEED-":
+            self.control_mode = event
+            self.update_window_to_speed()
+
+        elif event == "-POSE-":
+            self.control_mode = event
+            self.update_window_to_pose()
+
+        elif event == "-ATTITUDE-":
+            self.control_mode = event
+            self.update_window_to_attitude()
+
+        elif event == "-BEHAVIOR-":
+            self["-BEHAVIOR CONTROL-"].update(visible=(not self["-BEHAVIOR CONTROL-"].visible))
+
+    def update_window_to_pose(self):
+
+        self["-POSE-"].set_focus(True)
+        self["-HEADER_SPEED-"].update(visible=False)
+        self["-HEADER_POSE-"].update(visible=True)
+        self["-HEADER_ATTITUDE-"].update(visible=False)
+        self["-SP_CONTROL-"].update(visible=False)
+        self["-POS_CONTROL-"].update(visible=True)
+        self["-AT_CONTROL-"].update(visible=False)
+        self["-COL5-"].update(visible=False)
+        self["-COL4-"].update(visible=False)
+        self["-P_CONTROL-"].update(visible=False)
+        self["-COL7-"].update(visible=True)
+        self["-COL6B-"].update(visible=False)
+        self["-COL6-"].update(visible=True)
+
+
+    def update_window_to_speed(self):
+
+        self["-SPEED-"].set_focus(True)
+        self["-HEADER_SPEED-"].update(visible=True)
+        self["-HEADER_POSE-"].update(visible=False)
+        self["-HEADER_ATTITUDE-"].update(visible=False)
+        self["-SP_CONTROL-"].update(visible=True)
+        self["-POS_CONTROL-"].update(visible=False)
+        self["-AT_CONTROL-"].update(visible=False)
+        self["-P_CONTROL-"].update(visible=False)
+        self["-COL5-"].update(visible=False)
+        self["-COL4-"].update(visible=True)
+        self["-COL7-"].update(visible=False)
+        self["-COL6B-"].update(visible=True)
+        self["-COL6-"].update(visible=False)
+
+
+    def update_window_to_attitude(self):
+
+        self["-ATTITUDE-"].set_focus(True)
+        self["-HEADER_SPEED-"].update(visible=False)
+        self["-HEADER_POSE-"].update(visible=False)
+        self["-HEADER_ATTITUDE-"].update(visible=True)
+        self["-SP_CONTROL-"].update(visible=False)
+        self["-POS_CONTROL-"].update(visible=False)
+        self["-AT_CONTROL-"].update(visible=True)
+        self["-P_CONTROL-"].update(visible=True)
+        self["-COL5-"].update(visible=True)
+        self["-COL4-"].update(visible=False)
+        self["-COL7-"].update(visible=False)
+        self["-COL6B-"].update(visible=False)
+        self["-COL6-"].update(visible=True)

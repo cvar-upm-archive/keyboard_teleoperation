@@ -5,8 +5,6 @@ TAKE_OFF_KEY = "t"
 LAND_KEY = "l"
 HOVER_KEY = "space"
 
-
-
 class DroneManager:
     def __init__(self, uav_list: list[DroneInterface], drone_id_list, pose_frame_id, twist_frame_id):
         self.uav_list = uav_list
