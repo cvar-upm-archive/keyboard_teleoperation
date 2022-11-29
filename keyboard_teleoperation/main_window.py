@@ -1,15 +1,16 @@
 import PySimpleGUI as sg
 from settings_window import SettingsWindow
 from localization_window import LocalizationWindow
-from drone_manager import DroneManager
+from config_values import KeyMappings
+from config_values import ControlValues
+from config_values import ControlModes
 
 class MainWindow(sg.Window):
-    def __init__(self, drone_manager: DroneManager, font, menu_font, drone_id_list, value_list, *args, **kwargs):
+    def __init__(self, settings_window: SettingsWindow, localization_window: LocalizationWindow, font, menu_font, drone_id_list, value_list, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.settings_window = SettingsWindow(font=font, menu_font=menu_font, value_list=value_list, title="Settings", enable_close_attempted_event=True)
-        self.localization_window = LocalizationWindow(font=font, menu_font=menu_font, uav_list=drone_manager.uav_list, title="Localization",
-         size=(330, 200), use_default_focus=False, enable_close_attempted_event=True)
+        self.settings_window = settings_window
+        self.localization_window = localization_window
 
         self.font = font
         self.menu_font = menu_font
@@ -17,18 +18,17 @@ class MainWindow(sg.Window):
         self.use_default_focus=True
         self.resizable=True
         self.drone_id_list = drone_id_list
-        self.drone_manager = drone_manager
-        self.control_mode = "-SPEED-"
+        self.control_mode = ControlModes.SPEED_CONTROL.value
         self.value_list = value_list
         self.localization_opened = False
         
     def make_main_window(self):
 
         col1_layout = [
-            [sg.Text("t", font=self.font)],
-            [sg.Text("l", font=self.font)],
-            [sg.Text("space", font=self.font)],
-            [sg.Text("del", font=self.font)],
+            [sg.Text(KeyMappings.TAKE_OFF_KEY.value, font=self.font)],
+            [sg.Text(KeyMappings.LAND_KEY.value, font=self.font)],
+            [sg.Text(KeyMappings.HOVER_KEY.value, font=self.font)],
+            [sg.Text(KeyMappings.EMERGENCY_KEY.value, font=self.font)],
             [sg.Text("r", font=self.font)]]
             
         col2_layout = [
@@ -47,73 +47,73 @@ class MainWindow(sg.Window):
 
         col4_layout = [
             [sg.Text("Increase forward speed", font=self.font), sg.Text(
-                "1.00", font=self.font, key="-INPUTTEXT1-"), sg.Text("m/s", font=self.font)],
+                "{:0.2f}".format(ControlValues.SPEED_VALUE.value), font=self.font, key="-INPUTTEXT1-"), sg.Text("m/s", font=self.font)],
             [sg.Text("Increase backward speed", font=self.font), sg.Text(
-                "1.00", font=self.font, key="-INPUTTEXT2-"), sg.Text("m/s", font=self.font)],
+                "{:0.2f}".format(ControlValues.SPEED_VALUE.value), font=self.font, key="-INPUTTEXT2-"), sg.Text("m/s", font=self.font)],
             [sg.Text("Increase speed to the right", font=self.font), sg.Text(
-                "1.00", font=self.font, key="-INPUTTEXT3-"), sg.Text("m/s", font=self.font)],
+                "{:0.2f}".format(ControlValues.SPEED_VALUE.value), font=self.font, key="-INPUTTEXT3-"), sg.Text("m/s", font=self.font)],
             [sg.Text("Increase speed to the left", font=self.font), sg.Text(
-                "1.00", font=self.font, key="-INPUTTEXT4-"), sg.Text("m/s", font=self.font)],
+                "{:0.2f}".format(ControlValues.SPEED_VALUE.value), font=self.font, key="-INPUTTEXT4-"), sg.Text("m/s", font=self.font)],
             [sg.Text("", font=self.font)]
         ]
 
         col5_layout = [
-            [sg.Text("Pitch", font=self.font), sg.Text("0.20", font=self.font, key="-INPUTTEXT17-"), sg.Text(
-                "rad during", font=self.font), sg.Text("0.50", font=self.font, key="-INPUTTEXT21-"), sg.Text("s", font=self.font)],
-            [sg.Text("Pitch -", font=self.font), sg.Text("0.20", font=self.font, key="-INPUTTEXT18-"), sg.Text(
-                "rad during", font=self.font), sg.Text("0.50", font=self.font, key="-INPUTTEXT22-"), sg.Text("s", font=self.font)],
-            [sg.Text("Roll", font=self.font), sg.Text("0.20", font=self.font, key="-INPUTTEXT19-"), sg.Text(
-                "rad during", font=self.font), sg.Text("0.50", font=self.font, key="-INPUTTEXT23-"), sg.Text("s", font=self.font)],
-            [sg.Text("Roll -", font=self.font), sg.Text("0.20", font=self.font, key="-INPUTTEXT20-"), sg.Text(
-                "rad during", font=self.font), sg.Text("0.50", font=self.font, key="-INPUTTEXT24-"), sg.Text("s", font=self.font)],
+            [sg.Text("Pitch", font=self.font), sg.Text("{:0.2f}".format(ControlValues.PITCH_ANGLE_VALUE.value), font=self.font, key="-INPUTTEXT17-"), sg.Text(
+                "rad during", font=self.font), sg.Text("{:0.2f}".format(ControlValues.ATTITUDE_DURATION.value), font=self.font, key="-INPUTTEXT21-"), sg.Text("s", font=self.font)],
+            [sg.Text("Pitch -", font=self.font), sg.Text("{:0.2f}".format(ControlValues.PITCH_ANGLE_VALUE.value), font=self.font, key="-INPUTTEXT18-"), sg.Text(
+                "rad during", font=self.font), sg.Text("{:0.2f}".format(ControlValues.ATTITUDE_DURATION.value), font=self.font, key="-INPUTTEXT22-"), sg.Text("s", font=self.font)],
+            [sg.Text("Roll", font=self.font), sg.Text("{:0.2f}".format(ControlValues.ROLL_ANGLE_VALUE.value), font=self.font, key="-INPUTTEXT19-"), sg.Text(
+                "rad during", font=self.font), sg.Text("{:0.2f}".format(ControlValues.ATTITUDE_DURATION.value), font=self.font, key="-INPUTTEXT23-"), sg.Text("s", font=self.font)],
+            [sg.Text("Roll -", font=self.font), sg.Text("{:0.2f}".format(ControlValues.ROLL_ANGLE_VALUE.value), font=self.font, key="-INPUTTEXT20-"), sg.Text(
+                "rad during", font=self.font), sg.Text("{:0.2f}".format(ControlValues.ATTITUDE_DURATION.value), font=self.font, key="-INPUTTEXT24-"), sg.Text("s", font=self.font)],
             [sg.Text("", font=self.font)]
         ]
 
         col6_layout = [
             [sg.Text("Increase altitude", font=self.font), sg.Text(
-                "1.00", font=self.font, key="-INPUTTEXT13-"), sg.Text("m", font=self.font)],
+                "{:0.2f}".format(ControlValues.ALTITUDE_VALUE.value), font=self.font, key="-INPUTTEXT13-"), sg.Text("m", font=self.font)],
             [sg.Text("Decrease altitude", font=self.font), sg.Text(
-                "1.00", font=self.font, key="-INPUTTEXT14-"), sg.Text("m", font=self.font)],
-            [sg.Text("Turn counter-clockwise", font=self.font), sg.Text("0.10",
-                                                                    font=self.font, key="-INPUTTEXT15-"), sg.Text("rad", font=self.font)],
+                "{:0.2f}".format(ControlValues.ALTITUDE_VALUE.value), font=self.font, key="-INPUTTEXT14-"), sg.Text("m", font=self.font)],
+            [sg.Text("Turn counter-clockwise", font=self.font), sg.Text(
+                "{:0.2f}".format(ControlValues.TURN_ANGLE_VALUE.value), font=self.font, key="-INPUTTEXT15-"), sg.Text("rad", font=self.font)],
             [sg.Text("Turn clockwise", font=self.font), sg.Text(
-                "0.10", font=self.font, key="-INPUTTEXT16-"), sg.Text("rad", font=self.font)]
+                "{:0.2f}".format(ControlValues.TURN_ANGLE_VALUE.value), font=self.font, key="-INPUTTEXT16-"), sg.Text("rad", font=self.font)]
         ]
 
         col6B_layout = [
             [sg.Text("Increase vertical speed", font=self.font), sg.Text(
-                "1.00", font=self.font, key="-INPUTTEXT5-"), sg.Text("m/s", font=self.font)],
+                "{:0.2f}".format(ControlValues.VERTICAL_VALUE.value), font=self.font, key="-INPUTTEXT5-"), sg.Text("m/s", font=self.font)],
             [sg.Text("Decrease vertical speed", font=self.font), sg.Text(
-                "1.00", font=self.font, key="-INPUTTEXT6-"), sg.Text("m/s", font=self.font)],
+                "{:0.2f}".format(ControlValues.VERTICAL_VALUE.value), font=self.font, key="-INPUTTEXT6-"), sg.Text("m/s", font=self.font)],
             [sg.Text("Turn speed counter-clockwise", font=self.font), sg.Text(
-                "0.10", font=self.font, key="-INPUTTEXT7-"), sg.Text("rad/s", font=self.font)],
+                "{:0.2f}".format(ControlValues.TURN_SPEED_VALUE.value), font=self.font, key="-INPUTTEXT7-"), sg.Text("rad/s", font=self.font)],
             [sg.Text("Turn speed clockwise", font=self.font), sg.Text(
-                "0.10", font=self.font, key="-INPUTTEXT8-"), sg.Text("rad/s", font=self.font)]
+                "{:0.2f}".format(ControlValues.TURN_SPEED_VALUE.value), font=self.font, key="-INPUTTEXT8-"), sg.Text("rad/s", font=self.font)]
         ]
 
         col7_layout = [
             [sg.Text("Increase forward position", font=self.font), sg.Text(
-                "1.00", font=self.font, key="-INPUTTEXT9-"), sg.Text("m", font=self.font)],
+                "{:0.2f}".format(ControlValues.POSITION_VALUE.value), font=self.font, key="-INPUTTEXT9-"), sg.Text("m", font=self.font)],
             [sg.Text("Increase backward position", font=self.font), sg.Text(
-                "1.00", font=self.font, key="-INPUTTEXT10-"), sg.Text("m", font=self.font)],
+                "{:0.2f}".format(ControlValues.POSITION_VALUE.value), font=self.font, key="-INPUTTEXT10-"), sg.Text("m", font=self.font)],
             [sg.Text("Increase position to the right", font=self.font), sg.Text(
-                "1.00", font=self.font, key="-INPUTTEXT11-"), sg.Text("m", font=self.font)],
+                "{:0.2f}".format(ControlValues.POSITION_VALUE.value), font=self.font, key="-INPUTTEXT11-"), sg.Text("m", font=self.font)],
             [sg.Text("Increase position to the left", font=self.font), sg.Text(
-                "1.00", font=self.font, key="-INPUTTEXT12-"), sg.Text("m", font=self.font)],
+                "{:0.2f}".format(ControlValues.POSITION_VALUE.value), font=self.font, key="-INPUTTEXT12-"), sg.Text("m", font=self.font)],
             [sg.Text("", font=self.font)]
         ]
 
         col8_layout = [
-            [sg.Text("w", font=self.font)],
-            [sg.Text("s", font=self.font)],
-            [sg.Text("a", font=self.font)],
-            [sg.Text("d", font=self.font)]
+            [sg.Text(KeyMappings.UP_KEY.value, font=self.font)],
+            [sg.Text(KeyMappings.DOWN_KEY.value, font=self.font)],
+            [sg.Text(KeyMappings.ROTATE_LEFT_KEY.value, font=self.font)],
+            [sg.Text(KeyMappings.ROTATE_RIGHT_KEY.value, font=self.font)]
         ]
 
         col_button_layout = [
-            [sg.Button("Speed mode", font=self.font, key="-SPEED-", focus=True)],
-            [sg.Button("Pose mode", font=self.font, key="-POSE-")],
-            [sg.Button("Attitude mode", font=self.font, key="-ATTITUDE-")]
+            [sg.Button("Speed mode", font=self.font, key=ControlModes.SPEED_CONTROL.value, focus=True)],
+            [sg.Button("Pose mode", font=self.font, key=ControlModes.POSE_CONTROL.value)],
+            [sg.Button("Attitude mode", font=self.font, key=ControlModes.ATTITUDE_CONTROL.value)]
         ]
 
         main_buttons_layout = [
@@ -168,7 +168,7 @@ class MainWindow(sg.Window):
         if event == sg.WIN_CLOSED:
             if (self.localization_opened):
                 self.localization_window.close()
-            return False
+            return None, None, None, False
 
         selection_values = list(value.values())[:len(self.drone_id_list)+1]
 
@@ -188,11 +188,13 @@ class MainWindow(sg.Window):
             if self.settings_window._Hidden:
                 self.settings_window.move(self.current_location()[0], self.current_location()[1])
                 self.settings_window.un_hide()
-
+            
             while (True):
                 settings_event, settings_value = self.settings_window.read()  # type: ignore
 
-                if not self.settings_window.event_handler(self, settings_event, settings_value):
+                self.value_list, opened = self.settings_window.event_handler(self, settings_event, settings_value)
+                
+                if not opened:
                     break
 
         elif event == "All":
@@ -217,46 +219,39 @@ class MainWindow(sg.Window):
             for index, value in enumerate(selection_values[:-1]):
                 self.drone_id_list[index][1] = bool(value)
 
-        elif event in ["-SPEED-", "-POSE-", "-ATTITUDE-", "-BEHAVIOR-"]:
+        elif event in ControlModes.list() or event == "-BEHAVIOR-":
             self.update_main_window_mode(event)
 
-        else:
-            input = event.split(":")
-            if input[0] in {"t","l","space","Delete","w","s","a","d"}:
-                self["-key_pressed-"].update(value=input[0])
-            elif (input[0] == "Up"):
+        elif event.split(":")[0] in KeyMappings.list():
+            key = event.split(":")
+            self["-key_pressed-"].update(value=key[0])
+            if (key[0] == KeyMappings.FORWARD_KEY.value):
                 self["-key_pressed-"].update(value="↑")
-            elif (input[0] == "Down"):
+            elif (key[0] == KeyMappings.BACKWARD_KEY.value):
                 self["-key_pressed-"].update(value="↓")
-            elif (input[0] == "Left"):
+            elif (key[0] == KeyMappings.LEFT_KEY.value):
                 self["-key_pressed-"].update(value="←")
-            elif (input[0] == "Right"):
+            elif (key[0] == KeyMappings.RIGHT_KEY.value):
                 self["-key_pressed-"].update(value="→")
-            
-            self.drone_manager.manage_common_behaviors(input[0])
 
-            if (self.control_mode == "-SPEED-"):
-                self.drone_manager.manage_speed_behaviors(input[0], self.value_list)
+            return self.control_mode, key[0], self.value_list, True
 
-            elif (self.control_mode == "-POSE-"):
-                self.drone_manager.manage_pose_behaviors(input[0], self.value_list)
+        if (self.localization_opened):
+            self.localization_opened = self.localization_window.execute_localization_window() 
 
-            if (self.localization_opened):
-                self.localization_opened = self.localization_window.execute_localization_window()
-            
-        return True
+        return None, None, None, True
 
     def update_main_window_mode(self, event):
 
-        if event == "-SPEED-":
+        if event == ControlModes.SPEED_CONTROL.value:
             self.control_mode = event
             self.update_window_to_speed()
 
-        elif event == "-POSE-":
+        elif event == ControlModes.POSE_CONTROL.value:
             self.control_mode = event
             self.update_window_to_pose()
 
-        elif event == "-ATTITUDE-":
+        elif event == ControlModes.ATTITUDE_CONTROL.value:
             self.control_mode = event
             self.update_window_to_attitude()
 
@@ -265,7 +260,7 @@ class MainWindow(sg.Window):
 
     def update_window_to_pose(self):
 
-        self["-POSE-"].set_focus(True)
+        self[ControlModes.POSE_CONTROL.value].set_focus(True)
         self["-HEADER_SPEED-"].update(visible=False)
         self["-HEADER_POSE-"].update(visible=True)
         self["-HEADER_ATTITUDE-"].update(visible=False)
@@ -282,7 +277,7 @@ class MainWindow(sg.Window):
 
     def update_window_to_speed(self):
 
-        self["-SPEED-"].set_focus(True)
+        self[ControlModes.SPEED_CONTROL.value].set_focus(True)
         self["-HEADER_SPEED-"].update(visible=True)
         self["-HEADER_POSE-"].update(visible=False)
         self["-HEADER_ATTITUDE-"].update(visible=False)
@@ -299,7 +294,7 @@ class MainWindow(sg.Window):
 
     def update_window_to_attitude(self):
 
-        self["-ATTITUDE-"].set_focus(True)
+        self[ControlModes.ATTITUDE_CONTROL.value].set_focus(True)
         self["-HEADER_SPEED-"].update(visible=False)
         self["-HEADER_POSE-"].update(visible=False)
         self["-HEADER_ATTITUDE-"].update(visible=True)

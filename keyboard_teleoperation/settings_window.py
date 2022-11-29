@@ -56,7 +56,7 @@ class SettingsWindow(sg.Window):
 
         if settings_event == sg.WIN_CLOSE_ATTEMPTED_EVENT or settings_event == "Exit":
             self.hide()
-            return False
+            return self.value_list, False
 
         if settings_event == "Save":
             jdx = 0
@@ -77,4 +77,6 @@ class SettingsWindow(sg.Window):
 
                 self["-VALUE" + str(idx) + "-"].update(value="{:0.2f}".format(value))
 
-        return True
+            return self.value_list, True
+
+        return self.value_list, True

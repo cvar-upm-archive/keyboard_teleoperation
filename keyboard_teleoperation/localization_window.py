@@ -40,7 +40,7 @@ class LocalizationWindow(sg.Window):
             value="{:0.2f}".format(round(self.uav_list[0].orientation[1], 2)))
         self["-LOCALIZATION_YW-"].update(
             value="{:0.2f}".format(round(self.uav_list[0].orientation[2], 2)))
-
+    
         # self.refresh()
         if localization_event == sg.WIN_CLOSE_ATTEMPTED_EVENT or localization_event == "Exit":
             self.hide()

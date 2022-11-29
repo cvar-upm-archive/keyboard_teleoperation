@@ -24,6 +24,8 @@ setup(
          [package_name + '/settings_window.py']),
         ('share/' + package_name,
          [package_name + '/localization_window.py']),
+        ('share/' + package_name,
+         [package_name + '/config_values.py']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
