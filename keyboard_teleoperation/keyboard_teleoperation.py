@@ -85,7 +85,7 @@ class KeyboardTeleoperation:
             if (control_mode == ControlModes.SPEED_CONTROL.value):
                 self.drone_manager.manage_speed_behaviors(key, value_list)
 
-            elif (control_mode == ControlModes.ATTITUDE_CONTROL.value):
+            elif (control_mode == ControlModes.POSE_CONTROL.value):
                 self.drone_manager.manage_pose_behaviors(key, value_list)
 
         return opened
