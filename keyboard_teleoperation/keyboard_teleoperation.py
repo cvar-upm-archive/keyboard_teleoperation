@@ -56,8 +56,7 @@ class KeyboardTeleoperation:
 
         self.settings_window = SettingsWindow(font=("Terminus Font", 14), menu_font=("Ubuntu Mono", 18, 'bold'), value_list=value_list, title="Settings", enable_close_attempted_event=True)
 
-        self.localization_window = LocalizationWindow(font=("Terminus Font", 14), menu_font=("Ubuntu Mono", 18, 'bold'), uav_list=self.uav_list, title="Localization",
-         size=(330, 200), use_default_focus=False, enable_close_attempted_event=True)
+        self.localization_window = LocalizationWindow(font=("Terminus Font", 11), menu_font=("Ubuntu Mono", 13, 'bold'), uav_list=self.uav_list, title="Localization", use_default_focus=False, enable_close_attempted_event=True, resizable=True)
 
         self.main_window = MainWindow(settings_window = self.settings_window, localization_window = self.localization_window, font=("Terminus Font", 14), menu_font=("Ubuntu Mono", 18, 'bold'),
          drone_id_list=drone_id_list, value_list=value_list, title="Keyboard Teleoperation", finalize=True, return_keyboard_events=True)
@@ -71,7 +70,7 @@ class KeyboardTeleoperation:
 
     def tick_main_window(self):
         self.window = self.main_window.make_main_window()
-        while self.execute_main_window(self.window):
+        while self.execute_main_window(self.window): #type: ignore
             pass
 
     def execute_main_window(self, window: MainWindow):

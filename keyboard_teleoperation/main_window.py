@@ -128,7 +128,7 @@ class MainWindow(sg.Window):
                 col8_layout, element_justification='left', key="-COL8-"), sg.Column(col6_layout, element_justification='left', key="-COL6-", visible=False), sg.Column(col6B_layout, element_justification='left', key="-COL6B-")]]
 
         col_selection_layout = list()
-        col_active_behavior_layout = ["Behavior Take Off"]
+        col_active_behavior_layout = ["Behavior Take Off"] # Here active behavior list is added
         col_paused_behavior_layout = []
 
         all_selector = True
@@ -139,15 +139,15 @@ class MainWindow(sg.Window):
             if not drone_id[1]:
                 all_selector = False
 
-        selection_frame = sg.Frame("Drone selection control", layout=[[sg.Column(col_selection_layout, expand_y=True, scrollable=True, vertical_scroll_only=True, background_color="grey")],
+        selection_frame = sg.Frame("Drone selection control", layout=[[sg.Column(col_selection_layout, expand_y=True, scrollable=True, vertical_scroll_only=True, background_color="grey", sbar_trough_color="white", sbar_arrow_color="grey")],
             [sg.CB("All", key="All", enable_events=True, font=self.font, background_color="grey", expand_x=True, default=all_selector)]], vertical_alignment="top", size=(200, 300), expand_y=True)
 
         behavior_frame = sg.Frame("Behavior control",key="-BEHAVIOR CONTROL-",
         layout=[[sg.Text("Active Behaviors", font=self.menu_font, background_color="grey", expand_x=True, justification="center"), sg.Text("Paused Behaviors", font=self.menu_font, background_color="grey", expand_x=True, justification="center")],
         [sg.Listbox(col_active_behavior_layout, background_color="grey", font=self.font,
-        select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE, highlight_text_color="white", text_color="white", highlight_background_color="blue", expand_y=True, size=(17,)),
+        select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE, highlight_text_color="white", text_color="white", highlight_background_color="blue", expand_y=True, size=(17,), sbar_trough_color="white", sbar_arrow_color="grey"),
         sg.Listbox(col_paused_behavior_layout, background_color="grey", font=self.font,
-        select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE, highlight_text_color="white", text_color="white", highlight_background_color="blue", expand_y=True, size=(17,))],
+        select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE, highlight_text_color="white", text_color="white", highlight_background_color="blue", expand_y=True, size=(17,), sbar_trough_color="white", sbar_arrow_color="grey")],
         [sg.Button(" Pause ", font=self.font, key="-PAUSE_BEHAVIORS-", expand_x=True), sg.Button("Resume", font=self.font, key="-RESUME_BEHAVIORS-", expand_x=True)]],
         vertical_alignment="top", size=(470, 300), expand_y=True, visible=False)
         
