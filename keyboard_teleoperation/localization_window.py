@@ -1,5 +1,5 @@
 import PySimpleGUI as sg
-from python_interface.drone_interface import DroneInterface
+from python_interface.drone_interface_teleop import DroneInterfaceTeleop as DroneInterface
 
 class LocalizationWindow(sg.Window):
     def __init__(self, font, menu_font, uav_list: list[DroneInterface], *args, **kwargs):

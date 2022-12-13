@@ -1,7 +1,6 @@
-from python_interface.drone_interface import DroneInterface
+from python_interface.drone_interface_teleop import DroneInterfaceTeleop as DroneInterface
 from config_values import KeyMappings
 import threading
-from enum import Enum
 
 class DroneManager:
     def __init__(self, uav_list: list[DroneInterface], drone_id_list, pose_frame_id, twist_frame_id):
@@ -9,54 +8,33 @@ class DroneManager:
         self.drone_id_list = drone_id_list
         self.pose_frame_id = pose_frame_id
         self.twist_frame_id = twist_frame_id
+        self.value_common_behavior = {KeyMappings.TAKE_OFF_KEY.value: self.take_off, KeyMappings.LAND_KEY.value: self.land,
+        KeyMappings.HOVER_KEY.value: self.hover, KeyMappings.EMERGENCY_KEY.value: self.emergency_stop}
 
     def manage_common_behaviors(self, key):
 
-        if (key == KeyMappings.TAKE_OFF_KEY.value):
-
-            for index, drone_id in enumerate(self.drone_id_list): 
-                if drone_id[1] == True:
-                    self.execute_function(self.take_off, (self.uav_list[index],))
-
-        elif (key == KeyMappings.LAND_KEY.value):
-
-            for index, drone_id in enumerate(self.drone_id_list): 
-                if drone_id[1] == True:
-                    self.execute_function(self.land, (self.uav_list[index],))
-
-        elif (key == KeyMappings.HOVER_KEY.value):
-
-            for index, drone_id in enumerate(self.drone_id_list): 
-                if drone_id[1] == True:
-                    self.execute_function(self.hover, (self.uav_list[index],))
-
-        elif key == KeyMappings.EMERGENCY_KEY.value:
-
-            for index, drone_id in enumerate(self.drone_id_list): 
-                if drone_id[1] == True:
-                    self.execute_function(self.emergency_stop, (self.uav_list[index],))
+        self.execute_common_behaviors(self.value_common_behavior[key])
 
     def manage_speed_behaviors(self, key, value_list):
 
         if (key == KeyMappings.FORWARD_KEY.value):
             
             for index, drone_id in enumerate(self.drone_id_list): 
-                if drone_id[1] == True:
+                if drone_id[1]:
                     lineal = [value_list[0], 0.0, 0.0]
                     self.execute_function(self.move_at_speed, (self.uav_list[index], lineal, 0.0,))
 
         elif (key == KeyMappings.BACKWARD_KEY.value):
 
             for index, drone_id in enumerate(self.drone_id_list): 
-                if drone_id[1] == True:
-
+                if drone_id[1]:
                     lineal = [-value_list[0], 0.0, 0.0]
                     self.execute_function(self.move_at_speed, (self.uav_list[index], lineal, 0.0,))
 
         elif (key == KeyMappings.RIGHT_KEY.value):
 
             for index, drone_id in enumerate(self.drone_id_list): 
-                if drone_id[1] == True:
+                if drone_id[1]:
 
                     lineal = [0.0, value_list[0], 0.0]
                     self.execute_function(self.move_at_speed, (self.uav_list[index], lineal, 0.0,))
@@ -64,7 +42,7 @@ class DroneManager:
         elif (key == KeyMappings.LEFT_KEY.value):
 
             for index, drone_id in enumerate(self.drone_id_list): 
-                if drone_id[1] == True:
+                if drone_id[1]:
 
                     lineal = [0.0, -value_list[0], 0.0]
                     self.execute_function(self.move_at_speed, (self.uav_list[index], lineal, 0.0,))
@@ -72,7 +50,7 @@ class DroneManager:
         elif (key == KeyMappings.UP_KEY.value):
 
             for index, drone_id in enumerate(self.drone_id_list): 
-                if drone_id[1] == True:
+                if drone_id[1]:
 
                     lineal = [0.0, 0.0, value_list[1]]
                     self.execute_function(self.move_at_speed, (self.uav_list[index], lineal, 0.0,))
@@ -80,7 +58,7 @@ class DroneManager:
         elif (key == KeyMappings.DOWN_KEY.value):
 
             for index, drone_id in enumerate(self.drone_id_list): 
-                if drone_id[1] == True:
+                if drone_id[1]:
 
                     lineal = [0.0, 0.0, -value_list[1]]
                     self.execute_function(self.move_at_speed, (self.uav_list[index], lineal, 0.0,))
@@ -88,7 +66,7 @@ class DroneManager:
         elif (key == KeyMappings.ROTATE_RIGHT_KEY.value):
 
             for index, drone_id in enumerate(self.drone_id_list): 
-                if drone_id[1] == True:
+                if drone_id[1]:
 
                     lineal = [0.0, 0.0, 0.0]
                     self.execute_function(self.move_at_speed, (self.uav_list[index], lineal, value_list[2],))
@@ -96,7 +74,7 @@ class DroneManager:
         elif (key == KeyMappings.ROTATE_LEFT_KEY.value):
 
             for index, drone_id in enumerate(self.drone_id_list): 
-                if drone_id[1] == True:
+                if drone_id[1]:
 
                     lineal = [0.0, 0.0, 0.0]
                     self.execute_function(self.move_at_speed, (self.uav_list[index], lineal, -value_list[2],))
@@ -175,6 +153,11 @@ class DroneManager:
                     yaw = euler[2] - value_list[5]
 
                     self.execute_function(self.go_to_pose, (self.uav_list[index], position, yaw,))
+    
+    def execute_common_behaviors(self, method):
+        for index, drone_id in enumerate(self.drone_id_list): 
+            if drone_id[1]:
+                self.execute_function(method, (self.uav_list[index],))
 
     def execute_function(self, target, args):
         try:
@@ -184,8 +167,8 @@ class DroneManager:
 
     # FUNCTIONS TO CALL THE DRONE INTERFACES FUNCTIONS
 
-    def shutdown(self):
-        self.t.join()
+    #def shutdown(self):
+        #self.t.join()
 
     def take_off(self, uav: DroneInterface):
         uav.arm()
@@ -196,14 +179,14 @@ class DroneManager:
         uav.land(0.5)
 
     def hover(self, uav: DroneInterface):
-        uav.send_hover()
+        uav.motion_ref_handler.hover()
 
     def move_at_speed(self, uav: DroneInterface, lineal, yaw_speed):
-        uav.speed_motion_handler.send_speed_command_with_yaw_speed(
+        uav.motion_ref_handler.speed.send_speed_command_with_yaw_speed(
             lineal, self.twist_frame_id, yaw_speed)
 
     def go_to_pose(self, uav: DroneInterface, position, orientation):
-        uav.position_motion_handler.send_position_command_with_yaw_angle(
+        uav.motion_ref_handler.position.send_position_command_with_yaw_angle(
             position, None, self.pose_frame_id, self.twist_frame_id, orientation)
         
     def emergency_stop(self, uav: DroneInterface):

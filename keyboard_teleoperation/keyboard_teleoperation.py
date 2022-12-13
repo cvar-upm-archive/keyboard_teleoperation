@@ -3,11 +3,9 @@
 import sys
 import rclpy
 import threading
-from enum import Enum
 
 import PySimpleGUI as sg
-from python_interface.drone_interface import DroneInterface
-import motion_reference_handlers.utils as mh_utils
+from python_interface.drone_interface_teleop import DroneInterfaceTeleop as DroneInterface
 from main_window import MainWindow
 from localization_window import LocalizationWindow
 from settings_window import SettingsWindow
