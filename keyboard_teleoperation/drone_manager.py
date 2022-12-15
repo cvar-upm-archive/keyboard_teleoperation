@@ -1,6 +1,6 @@
 import threading
 from python_interface.drone_interface_teleop import DroneInterfaceTeleop as DroneInterface
-from keyboard_teleoperation.config_values import KeyMappings
+from config_values import KeyMappings
 
 
 class DroneManager:
@@ -17,7 +17,8 @@ class DroneManager:
 
     def manage_common_behaviors(self, key):
 
-        self.execute_common_behaviors(self.value_common_behavior[key])
+        if key in self.value_common_behavior:
+            self.execute_common_behaviors(self.value_common_behavior[key])
 
     def manage_speed_behaviors(self, key, value_list):
 

@@ -5,12 +5,12 @@ import rclpy
 
 import PySimpleGUI as sg
 from python_interface.drone_interface_teleop import DroneInterfaceTeleop as DroneInterface
-from keyboard_teleoperation.main_window import MainWindow
-from keyboard_teleoperation.localization_window import LocalizationWindow
-from keyboard_teleoperation.settings_window import SettingsWindow
-from keyboard_teleoperation.drone_manager import DroneManager
-from keyboard_teleoperation.config_values import ControlValues
-from keyboard_teleoperation.config_values import ControlModes
+from main_window import MainWindow
+from localization_window import LocalizationWindow
+from settings_window import SettingsWindow
+from drone_manager import DroneManager
+from config_values import ControlValues
+from config_values import ControlModes
 
 
 def main():

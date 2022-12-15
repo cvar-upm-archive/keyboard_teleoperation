@@ -1,9 +1,9 @@
 import PySimpleGUI as sg
-from keyboard_teleoperation.settings_window import SettingsWindow
-from keyboard_teleoperation.localization_window import LocalizationWindow
-from keyboard_teleoperation.config_values import KeyMappings
-from keyboard_teleoperation.config_values import ControlValues
-from keyboard_teleoperation.config_values import ControlModes
+from settings_window import SettingsWindow
+from localization_window import LocalizationWindow
+from config_values import KeyMappings
+from config_values import ControlValues
+from config_values import ControlModes
 
 
 class MainWindow(sg.Window):
